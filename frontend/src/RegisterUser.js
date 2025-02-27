@@ -153,7 +153,7 @@ const RegisterUser = () => {
         <thead>
           <tr>
             <th>Nome</th>
-            <th>Email</th>
+            <th>CPF</th>
             <th>Telefone</th>
             <th>Ações</th>
           </tr>
@@ -162,7 +162,7 @@ const RegisterUser = () => {
           {usuarios.map((usuario) => (
             <tr key={usuario._id}>
               <td>{usuario.nome}</td>
-              <td>{usuario.email}</td>
+              <td>{usuario.cpf}</td>
               <td>{usuario.fone}</td>
               <td>
                 <button onClick={() => handleEdit(usuario)} className="btn-edit">Editar</button>

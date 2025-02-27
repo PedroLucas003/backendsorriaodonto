@@ -40,5 +40,7 @@ router.delete("/auth/users/:id", AuthRegisterUserController.deleteUser);
 //Login Dentistas
 router.post("/auth/login", AuthRegisterUserController.loginUser);
 
+//Prontuário Paciente
+router.post("/auth/prontuario", AuthRegisterUserController.getProntuario);
 
 module.exports = router;

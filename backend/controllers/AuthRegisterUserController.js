@@ -193,14 +193,6 @@ module.exports = class AuthRegisterUserController {
       res.status(500).json({ message: "Erro ao excluir usuário." });
     }
   }
-
-
-
-
-
-
-
-
   
   //Login Dentistas
   static async loginUser(req, res) {
@@ -226,5 +218,44 @@ module.exports = class AuthRegisterUserController {
       res.status(500).json({ message: "Erro no servidor, tente novamente!" });
     }
   }
+
+
+
+  //Prontuário
+  static async getProntuario(req, res) {
+    const { cpf, password } = req.body;
+
+    if (!cpf || !password) {
+        return res.status(422).json({ message: "CPF e senha são obrigatórios!" });
+    }
+
+    try {
+        const user = await User.findOne({ cpf });
+        if (!user) {
+            return res.status(404).json({ message: "Paciente não encontrado!" });
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({ message: "Senha incorreta!" });
+        }
+
+        res.status(200).json({ 
+            nome: user.nome,
+            email: user.email,
+            idade: user.idade,
+            telefone: user.fone,
+            endereco: user.endereco,
+            historicoDoenca: user.historicoDoenca,
+            tratamentoMedico: user.tratamentoMedico,
+            procedimento: user.procedimento,
+            profissional: user.profissional
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: "Erro no servidor, tente novamente!" });
+    }
+}
+
   
 };

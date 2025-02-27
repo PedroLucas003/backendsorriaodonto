@@ -14,8 +14,8 @@ const Login = () => {
     try {
       const response = await axios.post(API_URL, { cpf, password });
 
-      alert(response.data.message); // Exibe a mensagem de sucesso
-      navigate("/register"); // Redireciona para a tela de cadastro
+      alert(response.data.message); 
+      navigate("/register"); 
     } catch (error) {
       alert(error.response?.data?.message || "Erro ao fazer login! Verifique os dados e tente novamente.");
     }

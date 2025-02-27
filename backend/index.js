@@ -19,5 +19,4 @@ app.listen(port, () => {
 })
 
 
-
 require("./database/connection")

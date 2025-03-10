@@ -48,9 +48,105 @@ const RegisterUser = () => {
     }
   };
 
+  // Função para formatar CPF
+  const formatCPF = (value) => {
+    const cleanedValue = value.replace(/\D/g, "");
+    let formattedValue = cleanedValue.replace(
+      /^(\d{3})(\d{3})(\d{3})(\d{2})$/,
+      "$1.$2.$3-$4"
+    );
+    if (cleanedValue.length <= 3) {
+      formattedValue = cleanedValue;
+    } else if (cleanedValue.length <= 6) {
+      formattedValue = `${cleanedValue.slice(0, 3)}.${cleanedValue.slice(3)}`;
+    } else if (cleanedValue.length <= 9) {
+      formattedValue = `${cleanedValue.slice(0, 3)}.${cleanedValue.slice(
+        3,
+        6
+      )}.${cleanedValue.slice(6)}`;
+    } else if (cleanedValue.length <= 11) {
+      formattedValue = `${cleanedValue.slice(0, 3)}.${cleanedValue.slice(
+        3,
+        6
+      )}.${cleanedValue.slice(6, 9)}-${cleanedValue.slice(9)}`;
+    }
+    return formattedValue;
+  };
+
+  // Função para formatar Telefone
+  const formatFone = (value) => {
+    const cleanedValue = value.replace(/\D/g, "");
+    let formattedValue = cleanedValue.replace(
+      /^(\d{2})(\d{5})(\d{4})$/,
+      "($1) $2-$3"
+    );
+    if (cleanedValue.length <= 2) {
+      formattedValue = cleanedValue;
+    } else if (cleanedValue.length <= 7) {
+      formattedValue = `(${cleanedValue.slice(0, 2)}) ${cleanedValue.slice(2)}`;
+    } else if (cleanedValue.length <= 11) {
+      formattedValue = `(${cleanedValue.slice(0, 2)}) ${cleanedValue.slice(
+        2,
+        7
+      )}-${cleanedValue.slice(7)}`;
+    }
+    return formattedValue;
+  };
+
+  // Função para formatar RG
+  const formatRG = (value) => {
+    const cleanedValue = value.replace(/\D/g, "");
+    let formattedValue = cleanedValue.replace(
+      /^(\d{2})(\d{3})(\d{3})(\d{1})$/,
+      "$1.$2.$3-$4"
+    );
+    if (cleanedValue.length <= 2) {
+      formattedValue = cleanedValue;
+    } else if (cleanedValue.length <= 5) {
+      formattedValue = `${cleanedValue.slice(0, 2)}.${cleanedValue.slice(2)}`;
+    } else if (cleanedValue.length <= 8) {
+      formattedValue = `${cleanedValue.slice(0, 2)}.${cleanedValue.slice(
+        2,
+        5
+      )}.${cleanedValue.slice(5)}`;
+    } else if (cleanedValue.length <= 9) {
+      formattedValue = `${cleanedValue.slice(0, 2)}.${cleanedValue.slice(
+        2,
+        5
+      )}.${cleanedValue.slice(5, 8)}-${cleanedValue.slice(8)}`;
+    }
+    return formattedValue;
+  };
+
+  // Função para formatar Valor
+  const formatValor = (value) => {
+    const cleanedValue = value.replace(/\D/g, "");
+    const formattedValue = (cleanedValue / 100).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
+    return formattedValue;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prevData) => ({ ...prevData, [name]: value }));
+    let cleanedValue = value.replace(/\D/g, ""); // Remove não números
+
+    // Aplica a máscara correspondente ao campo
+    let formattedValue = value;
+    if (name === "cpf") {
+      formattedValue = formatCPF(cleanedValue);
+    } else if (name === "fone") {
+      formattedValue = formatFone(cleanedValue);
+    } else if (name === "rg") {
+      formattedValue = formatRG(cleanedValue);
+    } else if (name === "valor") {
+      formattedValue = formatValor(cleanedValue);
+    } else {
+      formattedValue = value;
+    }
+
+    setFormData((prevData) => ({ ...prevData, [name]: formattedValue }));
   };
 
   const handleFileChange = (e) => {
@@ -60,7 +156,16 @@ const RegisterUser = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const formDataToSend = new FormData();
-    Object.keys(formData).forEach((key) => formDataToSend.append(key, formData[key]));
+    Object.keys(formData).forEach((key) => {
+      let value = formData[key];
+      // Remove máscara antes de enviar
+      if (key === "cpf" || key === "fone" || key === "rg") {
+        value = value.replace(/\D/g, "");
+      } else if (key === "valor") {
+        value = value.replace(/[^0-9]/g, ""); // Remove tudo que não é número
+      }
+      formDataToSend.append(key, value);
+    });
 
     try {
       if (editandoId) {
@@ -144,34 +249,47 @@ const RegisterUser = () => {
               </div>
             )
           ))}
-          <button type="submit" className="btn">{editandoId ? "Atualizar" : "Cadastrar"}</button>
+          <button type="submit" className="btn">
+            <span className="btnText">{editandoId ? "Atualizar" : "Cadastrar"}</span>
+            <i className="bi bi-cloud-upload"></i> {/* Ícone de upload */}
+          </button>
         </div>
       </form>
 
       <h2>Usuários Cadastrados</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>CPF</th>
-            <th>Telefone</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {usuarios.map((usuario) => (
-            <tr key={usuario._id}>
-              <td>{usuario.nome}</td>
-              <td>{usuario.cpf}</td>
-              <td>{usuario.fone}</td>
-              <td>
-                <button onClick={() => handleEdit(usuario)} className="btn-edit">Editar</button>
-                <button onClick={() => handleDelete(usuario._id)} className="btn-delete">Excluir</button>
-              </td>
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>CPF</th>
+              <th>Telefone</th>
+              <th>Ações</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {usuarios.map((usuario) => (
+              <tr key={usuario._id}>
+                <td>{usuario.nome}</td>
+                <td>{usuario.cpf}</td>
+                <td>{usuario.fone}</td>
+                <td>
+                  <div className="actions">
+                    <button onClick={() => handleEdit(usuario)} className="btn-edit">
+                      <span className="btnText">Editar</span>
+                      <i className="bi bi-pencil"></i> {/* Ícone de edição */}
+                    </button>
+                    <button onClick={() => handleDelete(usuario._id)} className="btn-delete">
+                      <span className="btnText">Excluir</span>
+                      <i className="bi bi-trash"></i> {/* Ícone de exclusão */}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

@@ -1,17 +1,20 @@
 .container {
-  max-width: 800px;
+  max-width: 1200px;
   margin: auto;
   padding: 20px;
+  font-family: Arial, sans-serif;
 }
 
 h1, h2 {
   text-align: center;
+  color: #333;
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr); /* Três colunas */
   gap: 15px;
+  align-items: center;
 }
 
 .form-group {
@@ -22,39 +25,94 @@ h1, h2 {
 label {
   font-weight: bold;
   margin-bottom: 5px;
+  color: #555;
 }
 
 input {
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  padding: 10px;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  width: 100%;
+  font-size: 16px;
+  transition: all 0.3s ease;
 }
 
+input:hover {
+  border-color: #007bff;
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+}
+
+
+/* Botão estilizado */
 .btn {
-  grid-column: span 2;
-  padding: 10px;
-  background-color: #007bff;
-  color: white;
-  border: none;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  background: #ffffff;
+  color: black;
+  border-radius: 15px;
+  border: 1px solid rgba(0, 0, 0, 0.7); /* Borda escura */
+  width: 140px;
+  height: 40px;
+  overflow: hidden;
   cursor: pointer;
-  text-align: center;
-  border-radius: 4px;
+  transition: background-color 0.8s, color 0.8s;
+  margin: 10px auto; /* Centraliza o botão */
 }
 
 .btn:hover {
-  background-color: #0056b3;
+  background: #000000;
+  color: #ffffff;
+}
+
+/* Texto dentro do botão */
+.btnText {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: all 0.8s;
+}
+
+/* Ícone escondido por padrão */
+.btn i {
+  position: absolute;
+  top: 200%; /* Começa fora do botão */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: all 0.8s;
+  font-size: 20px; /* Tamanho do ícone */
+}
+
+/* Quando passar o mouse, o ícone sobe */
+.btn:hover i {
+  top: 50%;
+}
+
+/* O texto desce ao passar o mouse */
+.btn:hover .btnText {
+  top: -200%;
+}
+
+/* Ajuste para a tabela */
+.table-container {
+  margin-top: 20px;
+  overflow-x: auto;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 20px;
+  min-width: 600px;
 }
 
 th, td {
   padding: 10px;
   border: 1px solid #ddd;
-  text-align: center;
+  text-align: left;
 }
 
 th {
@@ -62,20 +120,72 @@ th {
   color: white;
 }
 
-.btn-edit {
-  background-color: #ffc107;
-  color: black;
-  margin-right: 5px;
-}
-
-.btn-delete {
-  background-color: #dc3545;
-  color: white;
+/* Botões de ação na tabela */
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
 }
 
 .btn-edit, .btn-delete {
-  padding: 5px 10px;
-  border: none;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  background: #ffffff;
+  color: black;
+  border-radius: 15px;
+  border: 1px solid rgba(0, 0, 0, 0.7); /* Borda escura */
+  width: 80px;
+  height: 30px;
+  overflow: hidden;
   cursor: pointer;
-  border-radius: 4px;
+  transition: background-color 0.8s, color 0.8s;
+}
+
+.btn-edit:hover, .btn-delete:hover {
+  background: #000000;
+  color: #ffffff;
+}
+
+/* Ícone escondido por padrão */
+.btn-edit i, .btn-delete i {
+  position: absolute;
+  top: 200%; /* Começa fora do botão */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: all 0.8s;
+  font-size: 16px; /* Tamanho do ícone */
+}
+
+/* Quando passar o mouse, o ícone sobe */
+.btn-edit:hover i, .btn-delete:hover i {
+  top: 50%;
+}
+
+/* O texto desce ao passar o mouse */
+.btn-edit:hover .btnText, .btn-delete:hover .btnText {
+  top: -200%;
+}
+
+/* Responsividade */
+@media (max-width: 1024px) {
+  .form-grid {
+    grid-template-columns: repeat(2, 1fr); /* Duas colunas */
+  }
+}
+
+@media (max-width: 768px) {
+  .form-grid {
+    grid-template-columns: 1fr; /* Uma coluna em telas menores */
+  }
+
+  table {
+    font-size: 14px;
+  }
+
+  .btn {
+    font-size: 14px;
+  }
 }

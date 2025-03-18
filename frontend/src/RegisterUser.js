@@ -34,6 +34,7 @@ const RegisterUser = () => {
 
   const [usuarios, setUsuarios] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
+  const [imagemModal, setImagemModal] = useState(null);
 
   useEffect(() => {
     fetchUsuarios();
@@ -48,7 +49,6 @@ const RegisterUser = () => {
     }
   };
 
-  // Função para formatar CPF
   const formatCPF = (value) => {
     const cleanedValue = value.replace(/\D/g, "");
     let formattedValue = cleanedValue.replace(
@@ -71,9 +71,8 @@ const RegisterUser = () => {
       )}.${cleanedValue.slice(6, 9)}-${cleanedValue.slice(9)}`;
     }
     return formattedValue;
-  };
+  } 
 
-  // Função para formatar Telefone
   const formatFone = (value) => {
     const cleanedValue = value.replace(/\D/g, "");
     let formattedValue = cleanedValue.replace(
@@ -93,7 +92,6 @@ const RegisterUser = () => {
     return formattedValue;
   };
 
-  // Função para formatar RG
   const formatRG = (value) => {
     const cleanedValue = value.replace(/\D/g, "");
     let formattedValue = cleanedValue.replace(
@@ -118,7 +116,6 @@ const RegisterUser = () => {
     return formattedValue;
   };
 
-  // Função para formatar Valor
   const formatValor = (value) => {
     const cleanedValue = value.replace(/\D/g, "");
     const formattedValue = (cleanedValue / 100).toLocaleString("pt-BR", {
@@ -130,9 +127,8 @@ const RegisterUser = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    let cleanedValue = value.replace(/\D/g, ""); // Remove não números
+    let cleanedValue = value.replace(/\D/g, "");
 
-    // Aplica a máscara correspondente ao campo
     let formattedValue = value;
     if (name === "cpf") {
       formattedValue = formatCPF(cleanedValue);
@@ -158,11 +154,10 @@ const RegisterUser = () => {
     const formDataToSend = new FormData();
     Object.keys(formData).forEach((key) => {
       let value = formData[key];
-      // Remove máscara antes de enviar
       if (key === "cpf" || key === "fone" || key === "rg") {
         value = value.replace(/\D/g, "");
       } else if (key === "valor") {
-        value = value.replace(/[^0-9]/g, ""); // Remove tudo que não é número
+        value = value.replace(/[^0-9]/g, "");
       }
       formDataToSend.append(key, value);
     });
@@ -224,12 +219,20 @@ const RegisterUser = () => {
     }
   };
 
+  const handleViewImage = (image) => {
+    setImagemModal(image);
+  };
+
+  const closeModal = () => {
+    setImagemModal(null);
+  };
+
   return (
     <div className="container">
       <h1>Cadastro de Usuário</h1>
       <form onSubmit={handleSubmit} encType="multipart/form-data">
         <div className="form-grid">
-          {Object.keys(formData).map((key) => (
+          {Object.keys(formData).map((key) =>
             key !== "image" ? (
               <div key={key} className="form-group">
                 <label htmlFor={key}>{key}</label>
@@ -245,13 +248,19 @@ const RegisterUser = () => {
             ) : (
               <div key={key} className="form-group">
                 <label htmlFor={key}>Upload de Imagem</label>
-                <input type="file" id={key} name={key} accept=".png, .jpg, .jpeg" onChange={handleFileChange} />
+                <input
+                  type="file"
+                  id={key}
+                  name={key}
+                  accept=".png, .jpg, .jpeg"
+                  onChange={handleFileChange}
+                />
               </div>
             )
-          ))}
+          )}
           <button type="submit" className="btn">
             <span className="btnText">{editandoId ? "Atualizar" : "Cadastrar"}</span>
-            <i className="bi bi-cloud-upload"></i> {/* Ícone de upload */}
+            <i className="bi bi-cloud-upload"></i>
           </button>
         </div>
       </form>
@@ -264,6 +273,7 @@ const RegisterUser = () => {
               <th>Nome</th>
               <th>CPF</th>
               <th>Telefone</th>
+              <th>Imagem</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -274,14 +284,21 @@ const RegisterUser = () => {
                 <td>{usuario.cpf}</td>
                 <td>{usuario.fone}</td>
                 <td>
+                  {usuario.image && (
+                    <button onClick={() => handleViewImage(usuario.image)} className="btn-view">
+                       Imagem
+                    </button>
+                  )}
+                </td>
+                <td>
                   <div className="actions">
                     <button onClick={() => handleEdit(usuario)} className="btn-edit">
                       <span className="btnText">Editar</span>
-                      <i className="bi bi-pencil"></i> {/* Ícone de edição */}
+                      <i className="bi bi-pencil"></i>
                     </button>
                     <button onClick={() => handleDelete(usuario._id)} className="btn-delete">
                       <span className="btnText">Excluir</span>
-                      <i className="bi bi-trash"></i> {/* Ícone de exclusão */}
+                      <i className="bi bi-trash"></i>
                     </button>
                   </div>
                 </td>
@@ -290,6 +307,15 @@ const RegisterUser = () => {
           </tbody>
         </table>
       </div>
+
+      {imagemModal && (
+        <div className="modal">
+          <div className="modal-content">
+            <span className="close" onClick={closeModal}>&times;</span>
+            <img src={`http://localhost:3000/uploads/${imagemModal}`} alt="Imagem do usuário" />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

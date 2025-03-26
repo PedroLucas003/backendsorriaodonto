@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./RegisterUser.css"; // Importação do CSS
 
-const API_URL = "http://localhost:3000/auth/register/user";
-const API_URL_LIST = "http://localhost:3000/auth/users"; // Endpoint para listar usuários
+// Constantes para os endpoints
+const API_URL_REGISTER = "http://localhost:3000/auth/register/user"; // Para cadastro
+const API_URL_USERS = "http://localhost:3000/auth/users"; // Para listar, atualizar e excluir
 
 const RegisterUser = () => {
   const [formData, setFormData] = useState({
@@ -42,7 +43,7 @@ const RegisterUser = () => {
 
   const fetchUsuarios = async () => {
     try {
-      const response = await axios.get(API_URL_LIST);
+      const response = await axios.get(API_URL_USERS);
       setUsuarios(response.data);
     } catch (error) {
       console.error("Erro ao buscar usuários:", error);
@@ -71,7 +72,7 @@ const RegisterUser = () => {
       )}.${cleanedValue.slice(6, 9)}-${cleanedValue.slice(9)}`;
     }
     return formattedValue;
-  } 
+  };
 
   const formatFone = (value) => {
     const cleanedValue = value.replace(/\D/g, "");
@@ -164,10 +165,10 @@ const RegisterUser = () => {
 
     try {
       if (editandoId) {
-        await axios.put(`${API_URL}/${editandoId}`, formDataToSend);
+        await axios.put(`${API_URL_USERS}/${editandoId}`, formDataToSend);
         alert("Usuário atualizado com sucesso!");
       } else {
-        await axios.post(API_URL, formDataToSend);
+        await axios.post(API_URL_REGISTER, formDataToSend);
         alert("Usuário cadastrado com sucesso!");
       }
       setFormData({
@@ -210,7 +211,7 @@ const RegisterUser = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Tem certeza que deseja excluir este usuário?")) {
       try {
-        await axios.delete(`${API_URL}/${id}`);
+        await axios.delete(`${API_URL_USERS}/${id}`);
         alert("Usuário excluído com sucesso!");
         fetchUsuarios();
       } catch (error) {

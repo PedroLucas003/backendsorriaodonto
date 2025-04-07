@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-import "./RegisterUser.css"; // Importação do CSS
-
-// Constantes para os endpoints
-const API_URL_REGISTER = "http://localhost:3000/auth/register/user"; // Para cadastro
-const API_URL_USERS = "http://localhost:3000/auth/users"; // Para listar, atualizar e excluir
+import api from "./api/api";
+import "./RegisterUser.css";
 
 const RegisterUser = () => {
   const [formData, setFormData] = useState({
@@ -43,7 +39,7 @@ const RegisterUser = () => {
 
   const fetchUsuarios = async () => {
     try {
-      const response = await axios.get(API_URL_USERS);
+      const response = await api.get("/auth/users");
       setUsuarios(response.data);
     } catch (error) {
       console.error("Erro ao buscar usuários:", error);
@@ -165,10 +161,10 @@ const RegisterUser = () => {
 
     try {
       if (editandoId) {
-        await axios.put(`${API_URL_USERS}/${editandoId}`, formDataToSend);
+        await api.put(`/auth/users/${editandoId}`, formDataToSend);
         alert("Usuário atualizado com sucesso!");
       } else {
-        await axios.post(API_URL_REGISTER, formDataToSend);
+        await api.post("/auth/register/user", formDataToSend);
         alert("Usuário cadastrado com sucesso!");
       }
       setFormData({
@@ -211,7 +207,7 @@ const RegisterUser = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Tem certeza que deseja excluir este usuário?")) {
       try {
-        await axios.delete(`${API_URL_USERS}/${id}`);
+        await api.delete(`/auth/users/${id}`);
         alert("Usuário excluído com sucesso!");
         fetchUsuarios();
       } catch (error) {
@@ -313,7 +309,7 @@ const RegisterUser = () => {
         <div className="modal">
           <div className="modal-content">
             <span className="close" onClick={closeModal}>&times;</span>
-            <img src={`http://localhost:3000/uploads/${imagemModal}`} alt="Imagem do usuário" />
+            <img src={`${api.defaults.baseURL}/uploads/${imagemModal}`} alt="Imagem do usuário" />
           </div>
         </div>
       )}

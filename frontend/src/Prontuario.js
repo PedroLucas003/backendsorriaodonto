@@ -1,27 +1,21 @@
 import React, { useState } from "react";
-import axios from "axios";
-import styles from "./Prontuario.module.css"; // Importando CSS Module
+import api from "./api/api";
+import styles from "./Prontuario.module.css";
 
 const Prontuario = () => {
   const [cpf, setCpf] = useState("");
   const [password, setPassword] = useState("");
-  const [patientName, setPatientName] = useState(""); // Estado para armazenar o nome do paciente
+  const [patientName, setPatientName] = useState("");
   const [error, setError] = useState("");
-  const [downloaded, setDownloaded] = useState(false); // Estado para controlar se o prontuário foi baixado
-  const [prontuarioData, setProntuarioData] = useState(null); // Estado para armazenar os dados do prontuário
+  const [downloaded, setDownloaded] = useState(false);
+  const [prontuarioData, setProntuarioData] = useState(null);
 
-  // Função para formatar o CPF
   const formatCPF = (value) => {
-    // Remove tudo que não é número
     const cleanedValue = value.replace(/\D/g, "");
-
-    // Aplica a máscara: XXX.XXX.XXX-XX
     let formattedValue = cleanedValue.replace(
       /^(\d{3})(\d{3})(\d{3})(\d{2})$/,
       "$1.$2.$3-$4"
     );
-
-    // Se o CPF não estiver completo, aplica a máscara parcial
     if (cleanedValue.length <= 3) {
       formattedValue = cleanedValue;
     } else if (cleanedValue.length <= 6) {
@@ -37,23 +31,24 @@ const Prontuario = () => {
         6
       )}.${cleanedValue.slice(6, 9)}-${cleanedValue.slice(9)}`;
     }
-
     return formattedValue;
   };
 
   const handleLogin = async () => {
     try {
-      // Remove a máscara antes de enviar o CPF
       const cleanedCPF = cpf.replace(/\D/g, "");
-      const response = await axios.post("http://localhost:3000/auth/prontuario", { cpf: cleanedCPF, password });
-      setPatientName(response.data.nome); // Armazena apenas o nome do paciente
-      setProntuarioData(response.data); // Armazena os dados do prontuário para o download
+      const response = await api.post("/auth/prontuario", { 
+        cpf: cleanedCPF, 
+        password 
+      });
+      setPatientName(response.data.nome);
+      setProntuarioData(response.data);
       setError("");
-      setDownloaded(false); // Reseta o estado de download
+      setDownloaded(false);
     } catch (err) {
       setError(err.response?.data?.message || "Erro ao buscar prontuário.");
-      setPatientName(""); // Limpa o nome do paciente em caso de erro
-      setProntuarioData(null); // Limpa os dados do prontuário
+      setPatientName("");
+      setProntuarioData(null);
     }
   };
 
@@ -82,7 +77,6 @@ const Prontuario = () => {
     link.click();
     document.body.removeChild(link);
 
-    // Após o download, marca como baixado
     setDownloaded(true);
   };
 
@@ -93,9 +87,9 @@ const Prontuario = () => {
         <input
           type="text"
           placeholder="Digite seu CPF"
-          value={formatCPF(cpf)} // Aplica a máscara ao exibir o valor
-          onChange={(e) => setCpf(e.target.value.replace(/\D/g, ""))} // Remove não números ao atualizar o estado
-          maxLength={14} // Tamanho máximo com máscara
+          value={formatCPF(cpf)}
+          onChange={(e) => setCpf(e.target.value.replace(/\D/g, ""))}
+          maxLength={14}
         />
         <input
           type="password"

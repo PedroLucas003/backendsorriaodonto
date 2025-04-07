@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "./api/api";
 import { useNavigate } from "react-router-dom";
 import styles from "./Login.module.css"; // Importando CSS Module
 
-const API_URL = "http://localhost:3000/auth/login";
+// const API_URL = "http://localhost:3000/auth/login";
 
 const Login = () => {
   const [cpf, setCpf] = useState("");
@@ -47,7 +47,7 @@ const Login = () => {
     try {
       // Remove a máscara antes de enviar o CPF
       const cleanedCPF = cpf.replace(/\D/g, "");
-      const response = await axios.post(API_URL, { cpf: cleanedCPF, password });
+      const response = await api.post("/auth/login", { cpf: cleanedCPF, password });
       alert(response.data.message);
       navigate("/register");
     } catch (error) {

@@ -3,8 +3,6 @@ import api from "./api/api";
 import { useNavigate } from "react-router-dom";
 import styles from "./Login.module.css"; // Importando CSS Module
 
-// const API_URL = "http://localhost:3000/auth/login";
-
 const Login = () => {
   const [cpf, setCpf] = useState("");
   const [password, setPassword] = useState("");
@@ -13,16 +11,12 @@ const Login = () => {
 
   // Função para formatar o CPF
   const formatCPF = (value) => {
-    // Remove tudo que não é número
     const cleanedValue = value.replace(/\D/g, "");
-
-    // Aplica a máscara: XXX.XXX.XXX-XX
     let formattedValue = cleanedValue.replace(
       /^(\d{3})(\d{3})(\d{3})(\d{2})$/,
       "$1.$2.$3-$4"
     );
 
-    // Se o CPF não estiver completo, aplica a máscara parcial
     if (cleanedValue.length <= 3) {
       formattedValue = cleanedValue;
     } else if (cleanedValue.length <= 6) {
@@ -45,13 +39,22 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Remove a máscara antes de enviar o CPF
       const cleanedCPF = cpf.replace(/\D/g, "");
-      const response = await api.post("/auth/login", { cpf: cleanedCPF, password });
-      alert(response.data.message);
-      navigate("/register");
+
+      const response = await api.post("/auth/login", {
+        cpf: cleanedCPF,
+        password,
+      });
+
+      const token = response.data.token;
+      localStorage.setItem("token", token); // Armazena o token no localStorage
+
+      navigate("/register"); // Redireciona após login
     } catch (error) {
-      setError(error.response?.data?.message || "Erro ao fazer login! Verifique os dados e tente novamente.");
+      setError(
+        error.response?.data?.message ||
+          "Erro ao fazer login! Verifique os dados e tente novamente."
+      );
     }
   };
 
@@ -63,9 +66,9 @@ const Login = () => {
           <input
             type="text"
             placeholder="Digite seu CPF"
-            value={formatCPF(cpf)} // Aplica a máscara ao exibir o valor
-            onChange={(e) => setCpf(e.target.value.replace(/\D/g, ""))} // Remove não números ao atualizar o estado
-            maxLength={14} // Tamanho máximo com máscara
+            value={formatCPF(cpf)}
+            onChange={(e) => setCpf(e.target.value.replace(/\D/g, ""))}
+            maxLength={14}
             required
           />
           <input
@@ -77,7 +80,7 @@ const Login = () => {
           />
           <button type="submit" className={styles.btnLogin}>
             <span className={styles.btnText}>Entrar</span>
-            <i className="bi bi-box-arrow-in-right"></i> {/* Ícone de login */}
+            <i className="bi bi-box-arrow-in-right"></i>
           </button>
         </form>
         {error && <p className={styles.error}>{error}</p>}

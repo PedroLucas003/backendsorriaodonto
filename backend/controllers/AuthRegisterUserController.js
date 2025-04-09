@@ -1,6 +1,6 @@
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
-
+const jwt = require("jsonwebtoken");
 
 module.exports = class AuthRegisterUserController {
   static async init(req, res) {
@@ -8,7 +8,33 @@ module.exports = class AuthRegisterUserController {
   }
 
   static async registerUser(req, res) {
-    const { nome, email, idade, password, confirmPassword, fone, rg, sexo, cpf, endereco, possuiAlgumaDoencaAtualmente, tratamentoMedico, medicacaoAtualmente, alergiaRemedio, historicoDoenca, condicoesHemograma, historicoProcedimentoOdontologico, procedimento, denteface, valor, modalidade, profissional } = req.body;
+    const {
+      nomeCompleto,
+      email,
+      cpf,
+      telefone,
+      endereco,
+      dataNascimento,
+      password,
+      confirmPassword,
+      detalhesDoencas,
+      quaisRemedios,
+      quaisAnestesias,
+      frequenciaFumo,
+      frequenciaAlcool,
+      historicoCirurgia,
+      exameSangue,
+      coagulacao,
+      cicatrizacao,
+      historicoOdontologico,
+      sangramentoPosProcedimento,
+      respiracao,
+      peso,
+      profissional,
+      dataProcedimento,
+      modalidadePagamento,
+      valor
+    } = req.body;
 
     let image = "";
 
@@ -16,92 +42,31 @@ module.exports = class AuthRegisterUserController {
       image = req.file.filename;
     }
 
-    if (!nome) {
-      return res.status(422).json({ message: "O nome é obrigatório!" });
+    const requiredFields = {
+      nomeCompleto: "O nome completo é obrigatório!",
+      email: "O email é obrigatório!",
+      cpf: "O CPF é obrigatório!",
+      telefone: "O telefone é obrigatório!",
+      endereco: "O endereço é obrigatório!",
+      dataNascimento: "A data de nascimento é obrigatória!",
+      password: "A senha é obrigatória!",
+      detalhesDoencas: "Os detalhes sobre doenças são obrigatórios!",
+      quaisRemedios: "Informação sobre medicamentos é obrigatória!",
+      historicoCirurgia: "O histórico cirúrgico é obrigatório!",
+      profissional: "O profissional é obrigatório!",
+      dataProcedimento: "A data do procedimento é obrigatória!",
+      modalidadePagamento: "A modalidade de pagamento é obrigatória!",
+      valor: "O valor é obrigatório!"
+    };
+
+    for (const [field, message] of Object.entries(requiredFields)) {
+      if (!req.body[field]) {
+        return res.status(422).json({ message });
+      }
     }
 
-    if (!email) {
-      return res.status(422).json({ message: "O email é obrigatório!" });
-    }
-
-    if (!idade) {
-      return res.status(422).json({ message: "A idade é obrigatória!" });
-    }
-
-    if (!password) {
-      return res.status(422).json({ message: "A senha é obrigatória!" });
-    }
-
-    if (password != confirmPassword) {
+    if (password !== confirmPassword) {
       return res.status(422).json({ message: "As senhas não são iguais!" });
-    }
-
-    if (!fone) {
-      return res.status(422).json({ message: "O telefone é obrigatório!" });
-    }
-
-    if (!rg) {
-      return res.status(422).json({ message: "O RG é obrigatório!" });
-    }
-
-    if (!sexo) {
-      return res.status(422).json({ message: "O sexo é obrigatório!" });
-    }
-
-    if (!cpf) {
-      return res.status(422).json({ message: "O CPF é obrigatório!" });
-    }
-
-    if (!endereco) {
-      return res.status(422).json({ message: "O endereço é obrigatório!" });
-    }
-
-    if (!possuiAlgumaDoencaAtualmente) {
-      return res.status(422).json({ message: "Este campo é obrigatório!" });
-    }
-
-    if (!tratamentoMedico) {
-      return res.status(422).json({ message: "O Tratamento médico é obrigatório!" });
-    }
-
-    if (!medicacaoAtualmente) {
-      return res.status(422).json({ message: "A medicação atualmente é obrigatória!" });
-    }
-
-    if (!alergiaRemedio) {
-      return res.status(422).json({ message: "A alergia a remédio é obrigatória!" });
-    }
-
-    if (!historicoDoenca) {
-      return res.status(422).json({ message: "O histórico de doenças é obrigatório!" });
-    }
-
-    if (!condicoesHemograma) {
-      return res.status(422).json({ message: "As condições do hemograma são obrigatórias!" });
-    }
-
-    if (!historicoProcedimentoOdontologico) {
-      return res.status(422).json({ message: "O histórico de procedimentos odontológicos é obrigatório!" });
-    }
-
-    if (!procedimento) {
-      return res.status(422).json({ message: "O procedimento é obrigatório!" });
-    }
-
-    if (!denteface) {
-      return res.status(422).json({ message: "O denteface é obrigatório!" });
-    }
-
-    if (!valor) {
-      return res.status(422).json({ message: "O valor é obrigatório!" });
-    }
-
-    if (!modalidade) {
-      return res.status(422).json({ message: "A modalidade é obrigatória!" });
-    }
-
-    if (!profissional) {
-      return res.status(422).json({ message: "O profissional é obrigatório!" });
     }
 
     const userExist = await User.findOne({ cpf: cpf });
@@ -110,75 +75,88 @@ module.exports = class AuthRegisterUserController {
       return res.status(422).json({ message: "Já existe um usuário com esse CPF!" });
     }
 
-    const hash = await bcrypt.genSalt(12);
-    const passwordHash = await bcrypt.hash(password, hash);
+    const salt = await bcrypt.genSalt(12);
+    const passwordHash = await bcrypt.hash(password, salt);
 
     const user = new User({
-      nome,
+      nomeCompleto,
       email,
-      idade,
+      cpf,
+      telefone,
+      endereco,
+      dataNascimento,
       image,
       password: passwordHash,
-      fone,
-      rg,
-      sexo,
-      cpf,
-      endereco,
-      possuiAlgumaDoencaAtualmente,
-      tratamentoMedico,
-      medicacaoAtualmente,
-      alergiaRemedio,
-      historicoDoenca,
-      condicoesHemograma,
-      historicoProcedimentoOdontologico,
-      procedimento,
-      denteface,
-      valor,
-      modalidade,
-      profissional
+      detalhesDoencas,
+      quaisRemedios,
+      quaisAnestesias,
+      frequenciaFumo,
+      frequenciaAlcool,
+      historicoCirurgia,
+      exameSangue,
+      coagulacao,
+      cicatrizacao,
+      historicoOdontologico,
+      sangramentoPosProcedimento,
+      respiracao,
+      peso,
+      profissional,
+      dataProcedimento,
+      modalidadePagamento,
+      valor
     });
 
     try {
       await user.save();
       res.status(201).json({ message: "Usuário cadastrado com sucesso!", user });
     } catch (error) {
+      console.error(error);
       res.status(500).json({ message: "Ocorreu um erro ao cadastrar o usuário, tente mais tarde!" });
     }
   }
 
-  // Listar todos os usuários
   static async getAllUsers(req, res) {
     try {
-      const users = await User.find();
+      const users = await User.find().select("-password");
       res.json(users);
     } catch (error) {
+      console.error(error);
       res.status(500).json({ message: "Erro ao buscar usuários." });
     }
   }
 
-  // Atualizar usuário
   static async updateUser(req, res) {
     const { id } = req.params;
     const userData = req.body;
 
-    if (req.file) {
-      userData.image = req.file.filename;
-    }
-
     try {
-      const updatedUser = await User.findByIdAndUpdate(id, userData, { new: true });
-
-      if (!updatedUser) {
+      const existingUser = await User.findById(id);
+      if (!existingUser) {
         return res.status(404).json({ message: "Usuário não encontrado." });
       }
 
+      if (req.file) {
+        userData.image = req.file.filename;
+      } else {
+        userData.image = existingUser.image;
+      }
+
+      if (!userData.password) {
+        userData.password = existingUser.password;
+      } else {
+        const salt = await bcrypt.genSalt(12);
+        userData.password = await bcrypt.hash(userData.password, salt);
+      }
+
+      const updatedUser = await User.findByIdAndUpdate(id, userData, { new: true });
       res.json({ message: "Usuário atualizado com sucesso!", user: updatedUser });
+
     } catch (error) {
+      console.error(error);
       res.status(500).json({ message: "Erro ao atualizar usuário." });
     }
   }
 
-  // Deletar usuário
   static async deleteUser(req, res) {
     const { id } = req.params;
 
@@ -191,11 +169,11 @@ module.exports = class AuthRegisterUserController {
 
       res.json({ message: "Usuário excluído com sucesso!" });
     } catch (error) {
+      console.error(error);
       res.status(500).json({ message: "Erro ao excluir usuário." });
     }
   }
-  
-  //Login Dentistas
+
   static async loginUser(req, res) {
     const { cpf, password } = req.body;
 
@@ -214,49 +192,80 @@ module.exports = class AuthRegisterUserController {
         return res.status(401).json({ message: "Senha incorreta!" });
       }
 
-      res.status(200).json({ message: "Login bem-sucedido!" });
+      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+        expiresIn: "1h"
+      });
+
+      res.status(200).json({
+        token,
+        user: {
+          id: user._id,
+          nomeCompleto: user.nomeCompleto,
+          email: user.email
+        }
+      });
     } catch (error) {
+      console.error(error);
       res.status(500).json({ message: "Erro no servidor, tente novamente!" });
     }
   }
 
 
-
-  //Prontuário
   static async getProntuario(req, res) {
     const { cpf, password } = req.body;
-
+  
     if (!cpf || !password) {
-        return res.status(422).json({ message: "CPF e senha são obrigatórios!" });
+      return res.status(422).json({ message: "CPF e senha são obrigatórios!" });
     }
-
+  
     try {
-        const user = await User.findOne({ cpf });
-        if (!user) {
-            return res.status(404).json({ message: "Paciente não encontrado!" });
-        }
-
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            return res.status(401).json({ message: "Senha incorreta!" });
-        }
-
-        res.status(200).json({ 
-            nome: user.nome,
-            email: user.email,
-            idade: user.idade,
-            telefone: user.fone,
-            endereco: user.endereco,
-            historicoDoenca: user.historicoDoenca,
-            tratamentoMedico: user.tratamentoMedico,
-            procedimento: user.procedimento,
-            profissional: user.profissional
-        });
-
+      // Limpa o CPF (remove pontos e traços)
+      const cleanedCPF = cpf.replace(/\D/g, "");
+  
+      // Busca o usuário pelo CPF
+      const user = await User.findOne({ cpf: cleanedCPF });
+      if (!user) {
+        return res.status(404).json({ message: "Paciente não encontrado!" });
+      }
+  
+      // Compara a senha
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ message: "Senha incorreta!" });
+      }
+  
+      // Prepara os dados do prontuário (sem senha nem imagem)
+      const prontuario = {
+        nomeCompleto: user.nomeCompleto,
+        email: user.email,
+        cpf: user.cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4"), // <- aqui a máscara
+        telefone: user.telefone,
+        endereco: user.endereco,
+        dataNascimento: user.dataNascimento,
+        detalhesDoencas: user.detalhesDoencas,
+        quaisRemedios: user.quaisRemedios,
+        quaisAnestesias: user.quaisAnestesias,
+        frequenciaFumo: user.frequenciaFumo,
+        frequenciaAlcool: user.frequenciaAlcool,
+        historicoCirurgia: user.historicoCirurgia,
+        exameSangue: user.exameSangue,
+        coagulacao: user.coagulacao,
+        cicatrizacao: user.cicatrizacao,
+        historicoOdontologico: user.historicoOdontologico,
+        sangramentoPosProcedimento: user.sangramentoPosProcedimento,
+        respiracao: user.respiracao,
+        peso: user.peso,
+        profissional: user.profissional,
+        dataProcedimento: user.dataProcedimento,
+        modalidadePagamento: user.modalidadePagamento,
+        valor: user.valor
+      };
+  
+      return res.status(200).json(prontuario);
     } catch (error) {
-        res.status(500).json({ message: "Erro no servidor, tente novamente!" });
+      console.error(error);
+      res.status(500).json({ message: "Erro no servidor, tente novamente!" });
     }
-}
-
+  }
   
 };

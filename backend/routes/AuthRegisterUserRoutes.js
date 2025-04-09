@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const multer = require("multer");
 const path = require("path");
+const verifyToken = require("../auth");
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -26,23 +27,23 @@ const AuthRegisterUserController = require("../controllers/AuthRegisterUserContr
 // Rota inicial
 router.get("/", AuthRegisterUserController.init);
 
-// Criar usuário
+// Criar usuário (registro permanece público)
 router.post("/auth/register/user", upload.single("image"), AuthRegisterUserController.registerUser);
 
-// Listar todos os usuários
-router.get("/auth/users", AuthRegisterUserController.getAllUsers);
-
-// Atualizar usuário
-router.put("/auth/users/:id", upload.single("image"), AuthRegisterUserController.updateUser);
-
-// Deletar usuário
-router.delete("/auth/users/:id", AuthRegisterUserController.deleteUser);
-
-// Login Dentistas
+// Login (rota pública)
 router.post("/auth/login", AuthRegisterUserController.loginUser);
 
-// Prontuário Paciente
+// Prontuário Paciente - SEM TOKEN
 router.post("/auth/prontuario", AuthRegisterUserController.getProntuario);
+
+// Listar todos os usuários (protegida)
+router.get("/auth/users", verifyToken, AuthRegisterUserController.getAllUsers);
+
+// Atualizar usuário (protegida)
+router.put("/auth/users/:id", verifyToken, upload.single("image"), AuthRegisterUserController.updateUser);
+
+// Deletar usuário (protegida)
+router.delete("/auth/users/:id", verifyToken, AuthRegisterUserController.deleteUser);
 
 // Rota para servir imagens
 router.get("/imagens/:nomeArquivo", (req, res) => {
@@ -55,5 +56,6 @@ router.get("/imagens/:nomeArquivo", (req, res) => {
     }
   });
 });
+
 
 module.exports = router;

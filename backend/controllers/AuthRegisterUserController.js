@@ -176,26 +176,28 @@ module.exports = class AuthRegisterUserController {
 
   static async loginUser(req, res) {
     const { cpf, password } = req.body;
-
+  
     if (!cpf || !password) {
       return res.status(422).json({ message: "CPF e senha são obrigatórios!" });
     }
-
+  
     try {
-      const user = await User.findOne({ cpf });
+      // Adicione .select('+password') para incluir o campo oculto
+      const user = await User.findOne({ cpf }).select('+password');
+      
       if (!user) {
         return res.status(404).json({ message: "Usuário não encontrado!" });
       }
-
+  
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
         return res.status(401).json({ message: "Senha incorreta!" });
       }
-
+  
       const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
         expiresIn: "1h"
       });
-
+  
       res.status(200).json({
         token,
         user: {
@@ -222,48 +224,50 @@ module.exports = class AuthRegisterUserController {
       // Limpa o CPF (remove pontos e traços)
       const cleanedCPF = cpf.replace(/\D/g, "");
   
-      // Busca o usuário pelo CPF
-      const user = await User.findOne({ cpf: cleanedCPF });
+      // Busca o usuário incluindo o campo password (que está com select: false no modelo)
+      const user = await User.findOne({ cpf: cleanedCPF }).select('+password');
+      
       if (!user) {
         return res.status(404).json({ message: "Paciente não encontrado!" });
       }
   
-      // Compara a senha
+      // Verifica a senha
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
         return res.status(401).json({ message: "Senha incorreta!" });
       }
   
-      // Prepara os dados do prontuário (sem senha nem imagem)
+      // Formata os dados do prontuário (sem expor a senha)
       const prontuario = {
         nomeCompleto: user.nomeCompleto,
         email: user.email,
-        cpf: user.cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4"), // <- aqui a máscara
+        cpf: user.cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4"), // Formata CPF
         telefone: user.telefone,
         endereco: user.endereco,
         dataNascimento: user.dataNascimento,
         detalhesDoencas: user.detalhesDoencas,
         quaisRemedios: user.quaisRemedios,
         quaisAnestesias: user.quaisAnestesias,
-        frequenciaFumo: user.frequenciaFumo,
-        frequenciaAlcool: user.frequenciaAlcool,
+        frequenciaFumo: user.habitos?.frequenciaFumo || "",
+        frequenciaAlcool: user.habitos?.frequenciaAlcool || "",
         historicoCirurgia: user.historicoCirurgia,
-        exameSangue: user.exameSangue,
-        coagulacao: user.coagulacao,
-        cicatrizacao: user.cicatrizacao,
+        exameSangue: user.exames?.exameSangue || "",
+        coagulacao: user.exames?.coagulacao || "",
+        cicatrizacao: user.exames?.cicatrizacao || "",
         historicoOdontologico: user.historicoOdontologico,
-        sangramentoPosProcedimento: user.sangramentoPosProcedimento,
-        respiracao: user.respiracao,
+        sangramentoPosProcedimento: user.procedimentos?.sangramentoPosProcedimento || "",
+        respiracao: user.procedimentos?.respiracao || "",
         peso: user.peso,
         profissional: user.profissional,
         dataProcedimento: user.dataProcedimento,
         modalidadePagamento: user.modalidadePagamento,
-        valor: user.valor
+        valor: user.valor,
+        // Adicione outros campos conforme necessário
       };
   
       return res.status(200).json(prontuario);
     } catch (error) {
-      console.error(error);
+      console.error("Erro ao buscar prontuário:", error);
       res.status(500).json({ message: "Erro no servidor, tente novamente!" });
     }
   }

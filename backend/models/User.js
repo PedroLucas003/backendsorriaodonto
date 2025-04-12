@@ -233,4 +233,5 @@ UserSchema.virtual('nomeFormatado').get(function() {
 
 const User = mongoose.model("User", UserSchema);
 
+
 module.exports = User;

@@ -18,12 +18,13 @@ const UserSchema = new mongoose.Schema({
     type: String, 
     required: [true, "O CPF é obrigatório"],
     unique: true,
-    validate: {
-      validator: function(v) {
-        return /^\d{3}\.\d{3}\.\d{3}\-\d{2}$/.test(v);
-      },
-      message: props => `${props.value} não é um CPF válido!`
-    }
+    // No modelo User.js, modifique a validação do CPF:
+validate: {
+  validator: function(v) {
+    return /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(v) || /^\d{11}$/.test(v);
+  },
+  message: "Use o formato 000.000.000-00 ou 11 dígitos"
+}
   },
   telefone: { 
     type: String, 
@@ -185,7 +186,7 @@ const UserSchema = new mongoose.Schema({
   modalidadePagamento: { 
     type: String, 
     required: [true, "A modalidade de pagamento é obrigatória"],
-    enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio"]
+    enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio, Boleto"]
   },
   valor: { 
     type: Number, 

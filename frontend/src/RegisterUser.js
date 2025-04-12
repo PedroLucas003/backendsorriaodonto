@@ -36,8 +36,8 @@ const RegisterUser = () => {
   const [usuarios, setUsuarios] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
   const [imagemModal, setImagemModal] = useState(null);
+  const [error, setError] = useState("");
 
-  // Opções para selects
   const modalidadesPagamento = [
     "Dinheiro",
     "Cartão de Crédito",
@@ -74,44 +74,33 @@ const RegisterUser = () => {
       setUsuarios(response.data);
     } catch (error) {
       console.error("Erro ao buscar usuários:", error);
+      setError("Erro ao carregar usuários. Tente novamente.");
     }
   };
 
   const formatCPF = (value) => {
     const cleanedValue = value.replace(/\D/g, "");
-    let formattedValue = cleanedValue.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
-    if (cleanedValue.length <= 3) {
-      formattedValue = cleanedValue;
-    } else if (cleanedValue.length <= 6) {
-      formattedValue = `${cleanedValue.slice(0, 3)}.${cleanedValue.slice(3)}`;
-    } else if (cleanedValue.length <= 9) {
-      formattedValue = `${cleanedValue.slice(0, 3)}.${cleanedValue.slice(3, 6)}.${cleanedValue.slice(6)}`;
-    } else if (cleanedValue.length <= 11) {
-      formattedValue = `${cleanedValue.slice(0, 3)}.${cleanedValue.slice(3, 6)}.${cleanedValue.slice(6, 9)}-${cleanedValue.slice(9)}`;
-    }
-    return formattedValue;
+    if (cleanedValue.length <= 3) return cleanedValue;
+    if (cleanedValue.length <= 6) return `${cleanedValue.slice(0, 3)}.${cleanedValue.slice(3)}`;
+    if (cleanedValue.length <= 9) return `${cleanedValue.slice(0, 3)}.${cleanedValue.slice(3, 6)}.${cleanedValue.slice(6)}`;
+    return `${cleanedValue.slice(0, 3)}.${cleanedValue.slice(3, 6)}.${cleanedValue.slice(6, 9)}-${cleanedValue.slice(9, 11)}`;
   };
 
   const formatFone = (value) => {
     const cleanedValue = value.replace(/\D/g, "");
-    let formattedValue = cleanedValue.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
-    if (cleanedValue.length <= 2) {
-      formattedValue = cleanedValue;
-    } else if (cleanedValue.length <= 7) {
-      formattedValue = `(${cleanedValue.slice(0, 2)}) ${cleanedValue.slice(2)}`;
-    } else if (cleanedValue.length <= 11) {
-      formattedValue = `(${cleanedValue.slice(0, 2)}) ${cleanedValue.slice(2, 7)}-${cleanedValue.slice(7)}`;
-    }
-    return formattedValue;
+    if (cleanedValue.length <= 2) return cleanedValue;
+    if (cleanedValue.length <= 7) return `(${cleanedValue.slice(0, 2)}) ${cleanedValue.slice(2)}`;
+    return `(${cleanedValue.slice(0, 2)}) ${cleanedValue.slice(2, 7)}-${cleanedValue.slice(7)}`;
   };
 
   const formatValor = (value) => {
     const cleanedValue = value.replace(/\D/g, "");
-    const formattedValue = (cleanedValue / 100).toLocaleString("pt-BR", {
+    if (!cleanedValue) return "";
+    const numericValue = parseFloat(cleanedValue) / 100;
+    return numericValue.toLocaleString("pt-BR", {
       style: "currency",
       currency: "BRL",
     });
-    return formattedValue;
   };
 
   const handleChange = (e) => {
@@ -128,17 +117,15 @@ const RegisterUser = () => {
       formattedValue = value;
     }
 
-    setFormData((prevData) => ({ ...prevData, [name]: formattedValue }));
+    setFormData(prev => ({ ...prev, [name]: formattedValue }));
+    setError("");
   };
 
   const handleFileChange = (e) => {
-    setFormData((prevData) => ({ ...prevData, image: e.target.files[0] }));
+    setFormData(prev => ({ ...prev, image: e.target.files[0] }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Verificar campos obrigatórios
+  const validateForm = () => {
     const requiredFields = {
       nomeCompleto: "O nome completo é obrigatório!",
       email: "O email é obrigatório!",
@@ -157,29 +144,45 @@ const RegisterUser = () => {
 
     for (const [field, message] of Object.entries(requiredFields)) {
       if (!formData[field]) {
-        alert(message);
-        return;
+        setError(message);
+        return false;
       }
     }
 
     if (!editandoId && (!formData.password || !formData.confirmPassword)) {
-      alert("A senha e confirmação são obrigatórias para novo cadastro!");
-      return;
+      setError("A senha e confirmação são obrigatórias para novo cadastro!");
+      return false;
     }
 
     if (!editandoId && formData.password !== formData.confirmPassword) {
-      alert("As senhas não coincidem!");
-      return;
+      setError("As senhas não coincidem!");
+      return false;
     }
+
+    if (!/^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(formData.cpf)) {
+      setError("CPF inválido! Use o formato 000.000.000-00");
+      return false;
+    }
+
+    if (!modalidadesPagamento.includes(formData.modalidadePagamento)) {
+      setError("Modalidade de pagamento inválida!");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
 
     const token = localStorage.getItem("token");
     const formDataToSend = new FormData();
 
     Object.keys(formData).forEach((key) => {
       if (key === "image") {
-        if (formData[key]) {
-          formDataToSend.append(key, formData[key]);
-        }
+        if (formData[key]) formDataToSend.append(key, formData[key]);
       } else {
         let value = formData[key];
         
@@ -218,40 +221,45 @@ const RegisterUser = () => {
         alert("Usuário cadastrado com sucesso!");
       }
 
-      setFormData({
-        nomeCompleto: "",
-        email: "",
-        cpf: "",
-        telefone: "",
-        endereco: "",
-        dataNascimento: "",
-        password: "",
-        confirmPassword: "",
-        detalhesDoencas: "",
-        quaisRemedios: "",
-        quaisAnestesias: "",
-        frequenciaFumo: "",
-        frequenciaAlcool: "",
-        historicoCirurgia: "",
-        exameSangue: "",
-        coagulacao: "",
-        cicatrizacao: "",
-        historicoOdontologico: "",
-        sangramentoPosProcedimento: "",
-        respiracao: "",
-        peso: "",
-        profissional: "",
-        dataProcedimento: "",
-        modalidadePagamento: "",
-        valor: "",
-        image: null,
-      });
-      setEditandoId(null);
+      resetForm();
       fetchUsuarios();
     } catch (error) {
       console.error("Erro ao salvar usuário:", error);
-      alert(`Erro ao salvar usuário: ${error.response?.data?.message || error.message}`);
+      setError(error.response?.data?.message || "Erro ao salvar usuário. Verifique os dados e tente novamente.");
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      nomeCompleto: "",
+      email: "",
+      cpf: "",
+      telefone: "",
+      endereco: "",
+      dataNascimento: "",
+      password: "",
+      confirmPassword: "",
+      detalhesDoencas: "",
+      quaisRemedios: "",
+      quaisAnestesias: "",
+      frequenciaFumo: "",
+      frequenciaAlcool: "",
+      historicoCirurgia: "",
+      exameSangue: "",
+      coagulacao: "",
+      cicatrizacao: "",
+      historicoOdontologico: "",
+      sangramentoPosProcedimento: "",
+      respiracao: "",
+      peso: "",
+      profissional: "",
+      dataProcedimento: "",
+      modalidadePagamento: "",
+      valor: "",
+      image: null,
+    });
+    setEditandoId(null);
+    setError("");
   };
 
   const handleEdit = (usuario) => {
@@ -287,7 +295,8 @@ const RegisterUser = () => {
         alert("Usuário excluído com sucesso!");
         fetchUsuarios();
       } catch (error) {
-        alert("Erro ao excluir usuário.");
+        console.error("Erro ao excluir usuário:", error);
+        setError("Erro ao excluir usuário. Tente novamente.");
       }
     }
   };
@@ -340,6 +349,9 @@ const RegisterUser = () => {
         </button>
       </div>
       <h1>Cadastro de Usuário</h1>
+      
+      {error && <div className="error-message">{error}</div>}
+
       <form onSubmit={handleSubmit} encType="multipart/form-data">
         <div className="form-section">
           <h2>Dados Pessoais</h2>
@@ -357,7 +369,8 @@ const RegisterUser = () => {
                   name={key}
                   value={formData[key]}
                   onChange={handleChange}
-                  required={(key !== 'password' && key !== 'confirmPassword') || !editandoId}                />
+                  required={(key !== 'password' && key !== 'confirmPassword') || !editandoId}
+                />
               </div>
             ))}
           </div>

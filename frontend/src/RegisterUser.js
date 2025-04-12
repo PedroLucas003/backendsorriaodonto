@@ -37,6 +37,30 @@ const RegisterUser = () => {
   const [editandoId, setEditandoId] = useState(null);
   const [imagemModal, setImagemModal] = useState(null);
 
+  // Opções para selects
+  const modalidadesPagamento = [
+    "Dinheiro",
+    "Cartão de Crédito",
+    "Cartão de Débito",
+    "PIX",
+    "Boleto",
+    "Convênio"
+  ];
+
+  const frequencias = [
+    "Nunca",
+    "Raramente",
+    "Ocasionalmente",
+    "Frequentemente",
+    "Diariamente"
+  ];
+
+  const opcoesSimNao = [
+    "Sim",
+    "Não",
+    "Não sei"
+  ];
+
   useEffect(() => {
     fetchUsuarios();
   }, []);
@@ -114,7 +138,7 @@ const RegisterUser = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Verificar campos obrigatórios conforme o backend
+    // Verificar campos obrigatórios
     const requiredFields = {
       nomeCompleto: "O nome completo é obrigatório!",
       email: "O email é obrigatório!",
@@ -151,7 +175,6 @@ const RegisterUser = () => {
     const token = localStorage.getItem("token");
     const formDataToSend = new FormData();
 
-    // Preparar dados para envio
     Object.keys(formData).forEach((key) => {
       if (key === "image") {
         if (formData[key]) {
@@ -160,14 +183,12 @@ const RegisterUser = () => {
       } else {
         let value = formData[key];
         
-        // Limpar formatação de campos específicos
         if (key === "cpf" || key === "telefone") {
           value = value.replace(/\D/g, "");
         } else if (key === "valor") {
           value = value.replace(/[^\d,]/g, "").replace(",", ".");
         }
         
-        // Não enviar senha se estiver vazia (em caso de edição)
         if ((key === "password" || key === "confirmPassword") && !value && editandoId) {
           return;
         }
@@ -197,7 +218,6 @@ const RegisterUser = () => {
         alert("Usuário cadastrado com sucesso!");
       }
 
-      // Resetar formulário
       setFormData({
         nomeCompleto: "",
         email: "",
@@ -251,7 +271,9 @@ const RegisterUser = () => {
       dataProcedimento: formatDate(usuario.dataProcedimento),
       password: "",
       confirmPassword: "",
-      image: null // Resetar imagem para evitar conflitos
+      image: null,
+      historicoCirurgia: usuario.historicoCirurgia || "",
+      historicoOdontologico: usuario.historicoOdontologico || ""
     });
   };
 
@@ -310,7 +332,6 @@ const RegisterUser = () => {
     valor: "Valor *"
   };
 
-  // Restante do seu código de renderização permanece o mesmo
   return (
     <div className={`container ${darkMode ? 'dark-mode' : ''}`}>
       <div className="theme-toggle">
@@ -336,12 +357,7 @@ const RegisterUser = () => {
                   name={key}
                   value={formData[key]}
                   onChange={handleChange}
-                  required={key !== 'quaisAnestesias' && key !== 'frequenciaFumo' && 
-                            key !== 'frequenciaAlcool' && key !== 'exameSangue' && 
-                            key !== 'coagulacao' && key !== 'cicatrizacao' && 
-                            key !== 'historicoOdontologico' && key !== 'sangramentoPosProcedimento' && 
-                            key !== 'respiracao' && key !== 'peso'}
-                />
+                  required={(key !== 'password' && key !== 'confirmPassword') || !editandoId}                />
               </div>
             ))}
           </div>
@@ -351,40 +367,133 @@ const RegisterUser = () => {
           <h2>Histórico de Saúde</h2>
           <div className="form-grid">
             {['detalhesDoencas', 'quaisRemedios', 'quaisAnestesias', 'frequenciaFumo', 
-              'frequenciaAlcool', 'historicoCirurgia', 'exameSangue', 'coagulacao', 
-              'cicatrizacao', 'historicoOdontologico', 'sangramentoPosProcedimento', 
-              'respiracao', 'peso'].map((key) => (
+              'frequenciaAlcool', 'exameSangue', 'coagulacao', 'cicatrizacao', 
+              'sangramentoPosProcedimento', 'respiracao', 'peso'].map((key) => (
               <div key={key} className="form-group">
                 <label htmlFor={key}>{labels[key]}</label>
-                <input
-                  type="text"
-                  id={key}
-                  name={key}
-                  value={formData[key]}
-                  onChange={handleChange}
-                  required={key === 'detalhesDoencas' || key === 'quaisRemedios' || key === 'historicoCirurgia'}
-                />
+                {key === 'frequenciaFumo' || key === 'frequenciaAlcool' ? (
+                  <select
+                    id={key}
+                    name={key}
+                    value={formData[key]}
+                    onChange={handleChange}
+                  >
+                    <option value="">Selecione...</option>
+                    {frequencias.map((opcao) => (
+                      <option key={opcao} value={opcao}>{opcao}</option>
+                    ))}
+                  </select>
+                ) : key === 'exameSangue' || key === 'coagulacao' || key === 'cicatrizacao' ? (
+                  <select
+                    id={key}
+                    name={key}
+                    value={formData[key]}
+                    onChange={handleChange}
+                  >
+                    <option value="">Selecione...</option>
+                    {opcoesSimNao.map((opcao) => (
+                      <option key={opcao} value={opcao}>{opcao}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    id={key}
+                    name={key}
+                    value={formData[key]}
+                    onChange={handleChange}
+                    required={key === 'detalhesDoencas' || key === 'quaisRemedios'}
+                  />
+                )}
               </div>
             ))}
           </div>
         </div>
 
         <div className="form-section">
+          <h2>Histórico Médico e Odontológico</h2>
+          <div className="form-grid">
+            <div className="form-group full-width">
+              <label htmlFor="historicoCirurgia">{labels.historicoCirurgia}</label>
+              <textarea
+                id="historicoCirurgia"
+                name="historicoCirurgia"
+                value={formData.historicoCirurgia}
+                onChange={handleChange}
+                rows={5}
+                required
+                className="large-text-area"
+              />
+            </div>
+
+            <div className="form-group full-width">
+              <label htmlFor="historicoOdontologico">{labels.historicoOdontologico}</label>
+              <textarea
+                id="historicoOdontologico"
+                name="historicoOdontologico"
+                value={formData.historicoOdontologico}
+                onChange={handleChange}
+                rows={5}
+                className="large-text-area"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="form-section">
           <h2>Dados do Procedimento</h2>
           <div className="form-grid">
-            {['profissional', 'dataProcedimento', 'modalidadePagamento', 'valor'].map((key) => (
-              <div key={key} className="form-group">
-                <label htmlFor={key}>{labels[key]}</label>
-                <input
-                  type={key === "dataProcedimento" ? "date" : "text"}
-                  id={key}
-                  name={key}
-                  value={formData[key]}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-            ))}
+            <div className="form-group">
+              <label htmlFor="profissional">{labels.profissional}</label>
+              <input
+                type="text"
+                id="profissional"
+                name="profissional"
+                value={formData.profissional}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="dataProcedimento">{labels.dataProcedimento}</label>
+              <input
+                type="date"
+                id="dataProcedimento"
+                name="dataProcedimento"
+                value={formData.dataProcedimento}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="modalidadePagamento">{labels.modalidadePagamento}</label>
+              <select
+                id="modalidadePagamento"
+                name="modalidadePagamento"
+                value={formData.modalidadePagamento}
+                onChange={handleChange}
+                required
+              >
+                <option value="">Selecione...</option>
+                {modalidadesPagamento.map((opcao) => (
+                  <option key={opcao} value={opcao}>{opcao}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="valor">{labels.valor}</label>
+              <input
+                type="text"
+                id="valor"
+                name="valor"
+                value={formData.valor}
+                onChange={handleChange}
+                required
+              />
+            </div>
           </div>
         </div>
 

@@ -1,16 +1,97 @@
+/* Estilos Gerais */
 .container {
   max-width: 1200px;
   margin: auto;
   padding: 20px;
   font-family: Arial, sans-serif;
   transition: all 0.3s ease;
+  position: relative;
 }
 
 h1, h2 {
   text-align: center;
   color: #333;
+  margin-top: 0;
 }
 
+/* Tema Dark */
+.dark-mode {
+  background-color: #121212;
+  color: #ffffff;
+}
+
+.dark-mode h1, 
+.dark-mode h2,
+.dark-mode label {
+  color: #e0e0e0;
+}
+
+.dark-mode .form-section {
+  background-color: #1e1e1e;
+  border-color: #333;
+}
+
+.dark-mode input,
+.dark-mode select,
+.dark-mode textarea {
+  background-color: #333;
+  color: #fff;
+  border-color: #444;
+}
+
+.dark-mode table {
+  background-color: #1e1e1e;
+  color: #fff;
+}
+
+.dark-mode th {
+  background-color: #0d47a1;
+}
+
+.dark-mode td {
+  border-color: #333;
+}
+
+/* Botão de Tema */
+.theme-toggle {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+}
+
+.theme-btn {
+  padding: 8px 15px;
+  border-radius: 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.theme-btn:hover {
+  background-color: #0056b3;
+}
+
+/* Seções do Formulário */
+.form-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  border: 2px solid #ddd;
+  border-radius: 10px;
+  background-color: #f8f9fa;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.form-section h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #ddd;
+  color: #007bff;
+}
+
+/* Grid do Formulário */
 .form-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -18,10 +99,15 @@ h1, h2 {
   align-items: center;
 }
 
+/* Grupos de Campos */
 .form-group {
   display: flex;
   flex-direction: column;
   margin-bottom: 15px;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
 }
 
 label {
@@ -30,7 +116,10 @@ label {
   color: #555;
 }
 
-input {
+/* Campos de Entrada */
+input,
+select,
+textarea {
   padding: 10px;
   border: 2px solid #ccc;
   border-radius: 8px;
@@ -39,11 +128,23 @@ input {
   transition: all 0.3s ease;
 }
 
-input:hover {
+input:hover,
+select:hover,
+textarea:hover {
   border-color: #007bff;
   box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
 }
 
+textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.large-text-area {
+  min-height: 120px;
+}
+
+/* Botões Principais */
 .btn {
   position: relative;
   display: flex;
@@ -93,6 +194,7 @@ input:hover {
   top: -200%;
 }
 
+/* Tabela de Usuários */
 .table-container {
   margin-top: 20px;
   overflow-x: auto;
@@ -115,13 +217,16 @@ th {
   color: white;
 }
 
+/* Botões de Ação */
 .actions {
   display: flex;
   gap: 10px;
   justify-content: center;
 }
 
-.btn-edit, .btn-delete, .btn-view {
+.btn-edit, 
+.btn-delete, 
+.btn-view {
   position: relative;
   display: flex;
   align-items: center;
@@ -138,12 +243,16 @@ th {
   transition: background-color 0.8s, color 0.8s;
 }
 
-.btn-edit:hover, .btn-delete:hover, .btn-view:hover {
+.btn-edit:hover, 
+.btn-delete:hover, 
+.btn-view:hover {
   background: #000000;
   color: #ffffff;
 }
 
-.btn-edit i, .btn-delete i, .btn-view i {
+.btn-edit i, 
+.btn-delete i, 
+.btn-view i {
   position: absolute;
   top: 200%;
   left: 50%;
@@ -152,14 +261,19 @@ th {
   font-size: 16px;
 }
 
-.btn-edit:hover i, .btn-delete:hover i, .btn-view:hover i {
+.btn-edit:hover i, 
+.btn-delete:hover i, 
+.btn-view:hover i {
   top: 50%;
 }
 
-.btn-edit:hover .btnText, .btn-delete:hover .btnText, .btn-view:hover .btnText {
+.btn-edit:hover .btnText, 
+.btn-delete:hover .btnText, 
+.btn-view:hover .btnText {
   top: -200%;
 }
 
+/* Modal de Imagem */
 .modal {
   display: flex;
   justify-content: center;
@@ -198,6 +312,7 @@ th {
   cursor: pointer;
 }
 
+/* Responsividade */
 @media (max-width: 1024px) {
   .form-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -216,76 +331,23 @@ th {
   .btn {
     font-size: 14px;
   }
+  
+  .theme-toggle {
+    position: static;
+    text-align: right;
+    margin-bottom: 15px;
+  }
 }
 
-.form-section {
-  margin-bottom: 30px;
-  padding: 20px;
-  border: 2px solid #ddd;
-  border-radius: 10px;
-  background-color: #f8f9fa;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.form-section h2 {
-  margin-top: 0;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #ddd;
-  color: #007bff;
-}
-
-.dark-mode {
-  background-color: #121212;
-  color: #ffffff;
-}
-
-.dark-mode h1, 
-.dark-mode h2,
-.dark-mode label {
-  color: #e0e0e0;
-}
-
-.dark-mode .form-section {
-  background-color: #1e1e1e;
-  border-color: #333;
-}
-
-.dark-mode input {
-  background-color: #333;
-  color: #fff;
-  border-color: #444;
-}
-
-.dark-mode table {
-  background-color: #1e1e1e;
-  color: #fff;
-}
-
-.dark-mode th {
-  background-color: #0d47a1;
-}
-
-.dark-mode td {
-  border-color: #333;
-}
-
-.theme-toggle {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-}
-
-.theme-btn {
-  padding: 8px 15px;
-  border-radius: 20px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.theme-btn:hover {
-  background-color: #0056b3;
+@media (max-width: 480px) {
+  .actions {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .btn-edit, 
+  .btn-delete, 
+  .btn-view {
+    width: 100%;
+  }
 }

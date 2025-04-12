@@ -92,15 +92,14 @@ const RegisterUser = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    let cleanedValue = value.replace(/\D/g, "");
-
+    
     let formattedValue = value;
     if (name === "cpf") {
-      formattedValue = formatCPF(cleanedValue);
+      formattedValue = formatCPF(value);
     } else if (name === "telefone") {
-      formattedValue = formatFone(cleanedValue);
+      formattedValue = formatFone(value);
     } else if (name === "valor") {
-      formattedValue = formatValor(cleanedValue);
+      formattedValue = formatValor(value);
     } else {
       formattedValue = value;
     }
@@ -114,37 +113,91 @@ const RegisterUser = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Verificar campos obrigatórios conforme o backend
+    const requiredFields = {
+      nomeCompleto: "O nome completo é obrigatório!",
+      email: "O email é obrigatório!",
+      cpf: "O CPF é obrigatório!",
+      telefone: "O telefone é obrigatório!",
+      endereco: "O endereço é obrigatório!",
+      dataNascimento: "A data de nascimento é obrigatória!",
+      detalhesDoencas: "Os detalhes sobre doenças são obrigatórios!",
+      quaisRemedios: "Informação sobre medicamentos é obrigatória!",
+      historicoCirurgia: "O histórico cirúrgico é obrigatório!",
+      profissional: "O profissional é obrigatório!",
+      dataProcedimento: "A data do procedimento é obrigatória!",
+      modalidadePagamento: "A modalidade de pagamento é obrigatória!",
+      valor: "O valor é obrigatório!"
+    };
+
+    for (const [field, message] of Object.entries(requiredFields)) {
+      if (!formData[field]) {
+        alert(message);
+        return;
+      }
+    }
+
+    if (!editandoId && (!formData.password || !formData.confirmPassword)) {
+      alert("A senha e confirmação são obrigatórias para novo cadastro!");
+      return;
+    }
+
+    if (!editandoId && formData.password !== formData.confirmPassword) {
+      alert("As senhas não coincidem!");
+      return;
+    }
+
     const token = localStorage.getItem("token");
     const formDataToSend = new FormData();
 
+    // Preparar dados para envio
     Object.keys(formData).forEach((key) => {
-      let value = formData[key];
-      if (key === "cpf" || key === "telefone") {
-        value = value.replace(/\D/g, "");
-      } else if (key === "valor") {
-        value = value.replace(/[^0-9]/g, "");
+      if (key === "image") {
+        if (formData[key]) {
+          formDataToSend.append(key, formData[key]);
+        }
+      } else {
+        let value = formData[key];
+        
+        // Limpar formatação de campos específicos
+        if (key === "cpf" || key === "telefone") {
+          value = value.replace(/\D/g, "");
+        } else if (key === "valor") {
+          value = value.replace(/[^\d,]/g, "").replace(",", ".");
+        }
+        
+        // Não enviar senha se estiver vazia (em caso de edição)
+        if ((key === "password" || key === "confirmPassword") && !value && editandoId) {
+          return;
+        }
+        
+        if (value !== null && value !== undefined) {
+          formDataToSend.append(key, value);
+        }
       }
-
-      if ((key === "password" || key === "confirmPassword") && !value) {
-        return;
-      }
-
-      formDataToSend.append(key, value);
     });
 
     try {
       if (editandoId) {
         await api.put(`/auth/users/${editandoId}`, formDataToSend, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data"
+          },
         });
         alert("Usuário atualizado com sucesso!");
       } else {
         await api.post("/auth/register/user", formDataToSend, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data"
+          },
         });
         alert("Usuário cadastrado com sucesso!");
       }
 
+      // Resetar formulário
       setFormData({
         nomeCompleto: "",
         email: "",
@@ -176,7 +229,8 @@ const RegisterUser = () => {
       setEditandoId(null);
       fetchUsuarios();
     } catch (error) {
-      alert("Erro ao salvar usuário.");
+      console.error("Erro ao salvar usuário:", error);
+      alert(`Erro ao salvar usuário: ${error.response?.data?.message || error.message}`);
     }
   };
 
@@ -191,10 +245,13 @@ const RegisterUser = () => {
 
     setFormData({
       ...usuario,
+      cpf: formatCPF(usuario.cpf),
+      telefone: formatFone(usuario.telefone),
       dataNascimento: formatDate(usuario.dataNascimento),
       dataProcedimento: formatDate(usuario.dataProcedimento),
       password: "",
       confirmPassword: "",
+      image: null // Resetar imagem para evitar conflitos
     });
   };
 
@@ -226,20 +283,20 @@ const RegisterUser = () => {
   };
 
   const labels = {
-    nomeCompleto: "Nome completo",
-    email: "E-mail",
-    cpf: "CPF",
-    telefone: "Telefone",
-    endereco: "Endereço",
-    dataNascimento: "Data de nascimento",
-    password: "Senha",
-    confirmPassword: "Confirmar senha",
-    detalhesDoencas: "Detalhes de doenças",
-    quaisRemedios: "Quais remédios",
+    nomeCompleto: "Nome completo *",
+    email: "E-mail *",
+    cpf: "CPF *",
+    telefone: "Telefone *",
+    endereco: "Endereço *",
+    dataNascimento: "Data de nascimento *",
+    password: "Senha" + (editandoId ? "" : " *"),
+    confirmPassword: "Confirmar senha" + (editandoId ? "" : " *"),
+    detalhesDoencas: "Detalhes de doenças *",
+    quaisRemedios: "Quais remédios *",
     quaisAnestesias: "Quais anestesias",
     frequenciaFumo: "Frequência de fumo",
     frequenciaAlcool: "Frequência de álcool",
-    historicoCirurgia: "Histórico de cirurgia",
+    historicoCirurgia: "Histórico de cirurgia *",
     exameSangue: "Exame de sangue",
     coagulacao: "Coagulação",
     cicatrizacao: "Cicatrização",
@@ -247,233 +304,174 @@ const RegisterUser = () => {
     sangramentoPosProcedimento: "Sangramento pós-procedimento",
     respiracao: "Respiração",
     peso: "Peso",
-    profissional: "Profissional",
-    dataProcedimento: "Data do procedimento",
-    modalidadePagamento: "Modalidade de pagamento",
-    valor: "Valor"
+    profissional: "Profissional *",
+    dataProcedimento: "Data do procedimento *",
+    modalidadePagamento: "Modalidade de pagamento *",
+    valor: "Valor *"
   };
 
-  return React.createElement(
-    "div",
-    { className: `container ${darkMode ? 'dark-mode' : ''}` },
-    React.createElement(
-      "div",
-      { className: "theme-toggle" },
-      React.createElement(
-        "button",
-        { onClick: toggleDarkMode, className: "theme-btn" },
-        darkMode ? '☀️ Light Mode' : '🌙 Dark Mode'
-      )
-    ),
-    React.createElement("h1", null, "Cadastro de Usuário"),
-    React.createElement(
-      "form",
-      { onSubmit: handleSubmit, encType: "multipart/form-data" },
-      React.createElement(
-        "div",
-        { className: "form-section" },
-        React.createElement("h2", null, "Dados Pessoais"),
-        React.createElement(
-          "div",
-          { className: "form-grid" },
-          ['nomeCompleto', 'email', 'cpf', 'telefone', 'endereco', 'dataNascimento', 'password', 'confirmPassword'].map((key) =>
-            React.createElement(
-              "div",
-              { key: key, className: "form-group" },
-              React.createElement("label", { htmlFor: key }, labels[key]),
-              React.createElement("input", {
-                type: key.includes("password")
-                  ? "password"
-                  : key === "dataNascimento"
-                  ? "date"
-                  : "text",
-                id: key,
-                name: key,
-                value: formData[key],
-                onChange: handleChange,
-                required: true
-              })
-            )
-          )
-        )
-      ),
-      React.createElement(
-        "div",
-        { className: "form-section" },
-        React.createElement("h2", null, "Histórico de Saúde"),
-        React.createElement(
-          "div",
-          { className: "form-grid" },
-          ['detalhesDoencas', 'quaisRemedios', 'quaisAnestesias', 'frequenciaFumo', 
-           'frequenciaAlcool', 'historicoCirurgia', 'exameSangue', 'coagulacao', 
-           'cicatrizacao', 'historicoOdontologico', 'sangramentoPosProcedimento', 
-           'respiracao', 'peso'].map((key) =>
-            React.createElement(
-              "div",
-              { key: key, className: "form-group" },
-              React.createElement("label", { htmlFor: key }, labels[key]),
-              React.createElement("input", {
-                type: "text",
-                id: key,
-                name: key,
-                value: formData[key],
-                onChange: handleChange
-              })
-            )
-          )
-        )
-      ),
-      React.createElement(
-        "div",
-        { className: "form-section" },
-        React.createElement("h2", null, "Dados do Procedimento"),
-        React.createElement(
-          "div",
-          { className: "form-grid" },
-          ['profissional', 'dataProcedimento', 'modalidadePagamento', 'valor'].map((key) =>
-            React.createElement(
-              "div",
-              { key: key, className: "form-group" },
-              React.createElement("label", { htmlFor: key }, labels[key]),
-              React.createElement("input", {
-                type: key === "dataProcedimento" ? "date" : "text",
-                id: key,
-                name: key,
-                value: formData[key],
-                onChange: handleChange
-              })
-            )
-          )
-        )
-      ),
-      React.createElement(
-        "div",
-        { className: "form-section" },
-        React.createElement("h2", null, "Upload de Imagem"),
-        React.createElement(
-          "div",
-          { className: "form-group" },
-          React.createElement("label", { htmlFor: "image" }, "Imagem"),
-          React.createElement("input", {
-            type: "file",
-            id: "image",
-            name: "image",
-            accept: ".png, .jpg, .jpeg",
-            onChange: handleFileChange
-          })
-        )
-      ),
-      React.createElement(
-        "button",
-        { type: "submit", className: "btn" },
-        React.createElement(
-          "span",
-          { className: "btnText" },
-          editandoId ? "Atualizar" : "Cadastrar"
-        ),
-        React.createElement("i", { className: "bi bi-cloud-upload" })
-      )
-    ),
-    React.createElement("h2", null, "Usuários Cadastrados"),
-    React.createElement(
-      "div",
-      { className: "table-container" },
-      React.createElement(
-        "table",
-        null,
-        React.createElement(
-          "thead",
-          null,
-          React.createElement(
-            "tr",
-            null,
-            React.createElement("th", null, "Nome"),
-            React.createElement("th", null, "CPF"),
-            React.createElement("th", null, "Telefone"),
-            React.createElement("th", null, "Imagem"),
-            React.createElement("th", null, "Ações")
-          )
-        ),
-        React.createElement(
-          "tbody",
-          null,
-          usuarios.map((usuario) =>
-            React.createElement(
-              "tr",
-              { key: usuario._id },
-              React.createElement("td", null, usuario.nomeCompleto),
-              React.createElement("td", null, usuario.cpf),
-              React.createElement("td", null, usuario.telefone),
-              React.createElement(
-                "td",
-                null,
-                usuario.image &&
-                  React.createElement(
-                    "button",
-                    {
-                      onClick: () => handleViewImage(usuario.image),
-                      className: "btn-view"
-                    },
-                    "Imagem"
-                  )
-              ),
-              React.createElement(
-                "td",
-                null,
-                React.createElement(
-                  "div",
-                  { className: "actions" },
-                  React.createElement(
-                    "button",
-                    {
-                      onClick: () => handleEdit(usuario),
-                      className: "btn-edit"
-                    },
-                    React.createElement(
-                      "span",
-                      { className: "btnText" },
-                      "Editar"
-                    ),
-                    React.createElement("i", { className: "bi bi-pencil" })
-                  ),
-                  React.createElement(
-                    "button",
-                    {
-                      onClick: () => handleDelete(usuario._id),
-                      className: "btn-delete"
-                    },
-                    React.createElement(
-                      "span",
-                      { className: "btnText" },
-                      "Excluir"
-                    ),
-                    React.createElement("i", { className: "bi bi-trash" })
-                  )
-                )
-              )
-            )
-          )
-        )
-      )
-    ),
-    imagemModal &&
-      React.createElement(
-        "div",
-        { className: "modal" },
-        React.createElement(
-          "div",
-          { className: "modal-content" },
-          React.createElement(
-            "span",
-            { className: "close", onClick: closeModal },
-            "×"
-          ),
-          React.createElement("img", {
-            src: `${api.defaults.baseURL}/uploads/${imagemModal}`,
-            alt: "Imagem do usuário"
-          })
-        )
-      )
+  // Restante do seu código de renderização permanece o mesmo
+  return (
+    <div className={`container ${darkMode ? 'dark-mode' : ''}`}>
+      <div className="theme-toggle">
+        <button onClick={toggleDarkMode} className="theme-btn">
+          {darkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+        </button>
+      </div>
+      <h1>Cadastro de Usuário</h1>
+      <form onSubmit={handleSubmit} encType="multipart/form-data">
+        <div className="form-section">
+          <h2>Dados Pessoais</h2>
+          <div className="form-grid">
+            {['nomeCompleto', 'email', 'cpf', 'telefone', 'endereco', 'dataNascimento', 'password', 'confirmPassword'].map((key) => (
+              <div key={key} className="form-group">
+                <label htmlFor={key}>{labels[key]}</label>
+                <input
+                  type={key.includes("password")
+                    ? "password"
+                    : key === "dataNascimento"
+                    ? "date"
+                    : "text"}
+                  id={key}
+                  name={key}
+                  value={formData[key]}
+                  onChange={handleChange}
+                  required={key !== 'quaisAnestesias' && key !== 'frequenciaFumo' && 
+                            key !== 'frequenciaAlcool' && key !== 'exameSangue' && 
+                            key !== 'coagulacao' && key !== 'cicatrizacao' && 
+                            key !== 'historicoOdontologico' && key !== 'sangramentoPosProcedimento' && 
+                            key !== 'respiracao' && key !== 'peso'}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="form-section">
+          <h2>Histórico de Saúde</h2>
+          <div className="form-grid">
+            {['detalhesDoencas', 'quaisRemedios', 'quaisAnestesias', 'frequenciaFumo', 
+              'frequenciaAlcool', 'historicoCirurgia', 'exameSangue', 'coagulacao', 
+              'cicatrizacao', 'historicoOdontologico', 'sangramentoPosProcedimento', 
+              'respiracao', 'peso'].map((key) => (
+              <div key={key} className="form-group">
+                <label htmlFor={key}>{labels[key]}</label>
+                <input
+                  type="text"
+                  id={key}
+                  name={key}
+                  value={formData[key]}
+                  onChange={handleChange}
+                  required={key === 'detalhesDoencas' || key === 'quaisRemedios' || key === 'historicoCirurgia'}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="form-section">
+          <h2>Dados do Procedimento</h2>
+          <div className="form-grid">
+            {['profissional', 'dataProcedimento', 'modalidadePagamento', 'valor'].map((key) => (
+              <div key={key} className="form-group">
+                <label htmlFor={key}>{labels[key]}</label>
+                <input
+                  type={key === "dataProcedimento" ? "date" : "text"}
+                  id={key}
+                  name={key}
+                  value={formData[key]}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="form-section">
+          <h2>Upload de Imagem</h2>
+          <div className="form-group">
+            <label htmlFor="image">Imagem</label>
+            <input
+              type="file"
+              id="image"
+              name="image"
+              accept=".png, .jpg, .jpeg"
+              onChange={handleFileChange}
+            />
+          </div>
+        </div>
+
+        <button type="submit" className="btn">
+          <span className="btnText">{editandoId ? "Atualizar" : "Cadastrar"}</span>
+          <i className="bi bi-cloud-upload"></i>
+        </button>
+      </form>
+
+      <h2>Usuários Cadastrados</h2>
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>CPF</th>
+              <th>Telefone</th>
+              <th>Imagem</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {usuarios.map((usuario) => (
+              <tr key={usuario._id}>
+                <td>{usuario.nomeCompleto}</td>
+                <td>{formatCPF(usuario.cpf)}</td>
+                <td>{formatFone(usuario.telefone)}</td>
+                <td>
+                  {usuario.image && (
+                    <button
+                      onClick={() => handleViewImage(usuario.image)}
+                      className="btn-view"
+                    >
+                      Imagem
+                    </button>
+                  )}
+                </td>
+                <td>
+                  <div className="actions">
+                    <button
+                      onClick={() => handleEdit(usuario)}
+                      className="btn-edit"
+                    >
+                      <span className="btnText">Editar</span>
+                      <i className="bi bi-pencil"></i>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(usuario._id)}
+                      className="btn-delete"
+                    >
+                      <span className="btnText">Excluir</span>
+                      <i className="bi bi-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {imagemModal && (
+        <div className="modal">
+          <div className="modal-content">
+            <span className="close" onClick={closeModal}>×</span>
+            <img
+              src={`${api.defaults.baseURL}/uploads/${imagemModal}`}
+              alt="Imagem do usuário"
+            />
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import api from "./api/api";
 import { useNavigate } from "react-router-dom";
-import styles from "./Login.module.css"; // Importando CSS Module
+import styles from "./Login.module.css";
 
 const Login = () => {
   const [cpf, setCpf] = useState("");
@@ -9,31 +9,13 @@ const Login = () => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  // Função para formatar o CPF
+  // Função para formatar o CPF (mantida igual)
   const formatCPF = (value) => {
     const cleanedValue = value.replace(/\D/g, "");
-    let formattedValue = cleanedValue.replace(
-      /^(\d{3})(\d{3})(\d{3})(\d{2})$/,
-      "$1.$2.$3-$4"
-    );
-
-    if (cleanedValue.length <= 3) {
-      formattedValue = cleanedValue;
-    } else if (cleanedValue.length <= 6) {
-      formattedValue = `${cleanedValue.slice(0, 3)}.${cleanedValue.slice(3)}`;
-    } else if (cleanedValue.length <= 9) {
-      formattedValue = `${cleanedValue.slice(0, 3)}.${cleanedValue.slice(
-        3,
-        6
-      )}.${cleanedValue.slice(6)}`;
-    } else if (cleanedValue.length <= 11) {
-      formattedValue = `${cleanedValue.slice(0, 3)}.${cleanedValue.slice(
-        3,
-        6
-      )}.${cleanedValue.slice(6, 9)}-${cleanedValue.slice(9)}`;
-    }
-
-    return formattedValue;
+    if (cleanedValue.length <= 3) return cleanedValue;
+    if (cleanedValue.length <= 6) return `${cleanedValue.slice(0, 3)}.${cleanedValue.slice(3)}`;
+    if (cleanedValue.length <= 9) return `${cleanedValue.slice(0, 3)}.${cleanedValue.slice(3, 6)}.${cleanedValue.slice(6)}`;
+    return `${cleanedValue.slice(0, 3)}.${cleanedValue.slice(3, 6)}.${cleanedValue.slice(6, 9)}-${cleanedValue.slice(9, 11)}`;
   };
 
   const handleSubmit = async (e) => {
@@ -47,14 +29,19 @@ const Login = () => {
       });
 
       const token = response.data.token;
-      localStorage.setItem("token", token); // Armazena o token no localStorage
+      localStorage.setItem("token", token);
 
-      navigate("/register"); // Redireciona após login
+      navigate("/register");
     } catch (error) {
-      setError(
-        error.response?.data?.message ||
+      // Tratamento modificado para acesso não autorizado
+      if (error.response?.status === 403) {
+        setError("Acesso restrito. Seu CPF não está autorizado.");
+      } else {
+        setError(
+          error.response?.data?.message ||
           "Erro ao fazer login! Verifique os dados e tente novamente."
-      );
+        );
+      }
     }
   };
 

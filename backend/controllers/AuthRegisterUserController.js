@@ -177,27 +177,40 @@ module.exports = class AuthRegisterUserController {
   static async loginUser(req, res) {
     const { cpf, password } = req.body;
   
+    // 1. Validação básica
     if (!cpf || !password) {
       return res.status(422).json({ message: "CPF e senha são obrigatórios!" });
     }
   
     try {
-      // Adicione .select('+password') para incluir o campo oculto
-      const user = await User.findOne({ cpf }).select('+password');
-      
+      // 2. Limpa formatação do CPF
+      const cpfLimpo = cpf.replace(/\D/g, '');
+  
+      // 3. Busca usuário (APENAS se estiver autorizado)
+      const user = await User.findOne({ 
+        cpf: cpfLimpo,
+        autorizado: true // ← Filtro chave!
+      }).select('+password');
+  
+      // 4. Verificações
       if (!user) {
-        return res.status(404).json({ message: "Usuário não encontrado!" });
+        return res.status(403).json({ 
+          message: "Acesso não autorizado ou usuário não encontrado" 
+        });
       }
   
+      // 5. Valida senha
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
         return res.status(401).json({ message: "Senha incorreta!" });
       }
   
+      // 6. Gera token
       const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
         expiresIn: "1h"
       });
   
+      // 7. Retorna dados
       res.status(200).json({
         token,
         user: {
@@ -206,9 +219,35 @@ module.exports = class AuthRegisterUserController {
           email: user.email
         }
       });
+  
+    } catch (error) {
+      console.error("Erro no login:", error);
+      res.status(500).json({ message: "Erro no servidor, tente novamente!" });
+    }
+  }
+
+  static async autorizarUsuario(req, res) {
+    const { cpf } = req.body;
+  
+    try {
+      const cpfLimpo = cpf.replace(/\D/g, '');
+      const user = await User.findOneAndUpdate(
+        { cpf: cpfLimpo },
+        { $set: { autorizado: true } },
+        { new: true }
+      );
+  
+      if (!user) {
+        return res.status(404).json({ message: "Usuário não encontrado!" });
+      }
+  
+      res.status(200).json({ 
+        message: "Acesso autorizado com sucesso!",
+        user 
+      });
     } catch (error) {
       console.error(error);
-      res.status(500).json({ message: "Erro no servidor, tente novamente!" });
+      res.status(500).json({ message: "Erro ao autorizar usuário" });
     }
   }
 

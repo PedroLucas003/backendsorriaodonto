@@ -18,13 +18,12 @@ const UserSchema = new mongoose.Schema({
     type: String, 
     required: [true, "O CPF é obrigatório"],
     unique: true,
-    // No modelo User.js, modifique a validação do CPF:
-validate: {
-  validator: function(v) {
-    return /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(v) || /^\d{11}$/.test(v);
-  },
-  message: "Use o formato 000.000.000-00 ou 11 dígitos"
-}
+    validate: {
+      validator: function(v) {
+        return /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(v) || /^\d{11}$/.test(v);
+      },
+      message: "Use o formato 000.000.000-00 ou 11 dígitos"
+    }
   },
   telefone: { 
     type: String, 
@@ -186,7 +185,7 @@ validate: {
   modalidadePagamento: { 
     type: String, 
     required: [true, "A modalidade de pagamento é obrigatória"],
-    enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio, Boleto"]
+    enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto"]
   },
   valor: { 
     type: Number, 
@@ -194,11 +193,18 @@ validate: {
     min: [0, "O valor não pode ser negativo"]
   },
 
-  // Controle de acesso
+  // Controle de acesso (ATUALIZAÇÕES ADICIONADAS)
+  autorizado: {
+    type: Boolean,
+    default: false // Novo campo para controle de acesso
+  },
   role: { 
     type: String, 
     default: "user",
     enum: ["user", "admin", "medico"]
+  },
+  dataAutorizacao: { // Novo campo para rastrear quando foi autorizado
+    type: Date
   },
   createdAt: { 
     type: Date, 
@@ -213,6 +219,7 @@ validate: {
 
 // Índices
 UserSchema.index({ cpf: 1, email: 1 });
+UserSchema.index({ autorizado: 1 }); // Novo índice para otimizar consultas
 
 // Middleware para pré-processamento
 UserSchema.pre('save', function(next) {
@@ -222,6 +229,12 @@ UserSchema.pre('save', function(next) {
   if (this.isModified('cpf') && !this.cpf.includes('.')) {
     this.cpf = this.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
   }
+  
+  // Atualiza dataAutorizacao quando o campo autorizado é modificado para true
+  if (this.isModified('autorizado') && this.autorizado === true && !this.dataAutorizacao) {
+    this.dataAutorizacao = new Date();
+  }
+  
   next();
 });
 
@@ -233,6 +246,5 @@ UserSchema.virtual('nomeFormatado').get(function() {
 });
 
 const User = mongoose.model("User", UserSchema);
-
 
 module.exports = User;

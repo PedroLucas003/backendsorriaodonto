@@ -45,6 +45,9 @@ router.put("/auth/users/:id", verifyToken, upload.single("image"), AuthRegisterU
 // Deletar usuário (protegida)
 router.delete("/auth/users/:id", verifyToken, AuthRegisterUserController.deleteUser);
 
+//Autorizar o acesso do usuario
+router.post('/auth/autorizar', verifyToken, AuthRegisterUserController.autorizarUsuario);
+
 // Rota para servir imagens
 router.get("/imagens/:nomeArquivo", (req, res) => {
   const nomeArquivo = req.params.nomeArquivo;

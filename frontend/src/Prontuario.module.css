@@ -1,16 +1,16 @@
-.prontuarioContainer {
+.container {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f4f4f4;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
     margin: 0;
     padding: 20px;
-    text-align: center;
 }
 
-.prontuarioBox {
+.form {
     background: rgba(20, 20, 20, 0.9);
     border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
@@ -20,32 +20,29 @@
     padding: 40px;
     width: 100%;
     max-width: 450px;
-    margin: 0 auto;
     transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
-.prontuarioBox:hover {
+.form:hover {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
 }
 
-.prontuarioBox h2 {
+.form h2 {
     color: #fff;
     margin-bottom: 25px;
     font-size: 24px;
     font-weight: 600;
-}
-
-.formGroup {
-    position: relative;
-    margin-bottom: 20px;
-    width: 100%;
     text-align: center;
+    width: 100%;
 }
 
-.formGroup input {
+.form input {
     width: 100%;
     padding: 14px 20px;
-    margin: 8px auto;
+    margin: 8px 0;
     border: 1px solid #444;
     border-radius: 8px;
     font-size: 15px;
@@ -53,32 +50,13 @@
     transition: all 0.3s ease;
     box-sizing: border-box;
     color: #333;
-    display: block;
 }
 
-.formGroup input:focus {
+.form input:focus {
     outline: none;
     border-color: #2980b9;
     box-shadow: 0 0 0 2px rgba(41, 128, 185, 0.5);
     background-color: #fff;
-}
-
-.passwordToggle {
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: #aaa;
-    cursor: pointer;
-    padding: 5px;
-    font-size: 18px;
-    transition: color 0.3s ease;
-}
-
-.passwordToggle:hover {
-    color: #fff;
 }
 
 /* Estilos aprimorados do botão principal */
@@ -88,8 +66,8 @@
     align-items: center;
     justify-content: center;
     font-size: 16px;
-    background: #fff;
-    color: #000;
+    background: #000;
+    color: #fff;
     border-radius: 8px;
     border: none;
     width: 100%;
@@ -104,7 +82,7 @@
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
-.btnText {
+.buttonText {
     display: inline-block;
     transition: all 0.3s ease;
     position: absolute;
@@ -127,7 +105,7 @@
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
 }
 
-.btnDownload:hover .btnText {
+.btnDownload:hover .buttonText {
     opacity: 0;
     transform: translateY(-20px);
 }
@@ -137,28 +115,7 @@
     transform: translateY(0);
 }
 
-.btnDownload:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-    background: #555;
-    transform: none;
-    box-shadow: none;
-}
-
-.spinner {
-    animation: spin 1s linear infinite;
-    margin-right: 8px;
-    font-size: 18px;
-    color: #fff;
-}
-
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-/* Mensagens de feedback centralizadas */
-.error, .success {
+.error, .sucesso {
     margin: 1.5rem auto 0;
     padding: 12px;
     border-radius: 8px;
@@ -175,30 +132,25 @@
     border: 1px solid #ef9a9a;
 }
 
-.success {
+.sucesso {
     background-color: rgba(232, 245, 233, 0.9);
     color: #2e7d32;
     border: 1px solid #a5d6a7;
 }
 
-/* Responsividade */
 @media (max-width: 500px) {
-    .prontuarioBox {
+    .form {
         padding: 30px 20px;
         border-radius: 10px;
     }
     
-    .prontuarioBox h2 {
+    .form h2 {
         font-size: 22px;
         margin-bottom: 20px;
     }
     
-    .formGroup input {
+    .form input {
         padding: 12px 16px;
-    }
-    
-    .passwordToggle {
-        right: 12px;
     }
     
     .btnDownload {

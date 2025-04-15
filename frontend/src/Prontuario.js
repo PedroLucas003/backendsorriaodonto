@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import api from "./api/api"; // <-- usando sua instância com interceptors
+import api from "./api/api";
 import styles from "./Prontuario.module.css";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { FaFilePdf } from "react-icons/fa"; // Importando o ícone de PDF
 
 function Prontuario() {
   const [cpf, setCpf] = useState("");
@@ -12,7 +13,7 @@ function Prontuario() {
 
   const formatarCPF = (valor) => {
     return valor
-      .replace(/\D/g, "") // remove tudo que não for dígito
+      .replace(/\D/g, "")
       .replace(/(\d{3})(\d)/, "$1.$2")
       .replace(/(\d{3})(\d)/, "$1.$2")
       .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
@@ -27,7 +28,7 @@ function Prontuario() {
     }
 
     try {
-      const cleanedCPF = cpf.replace(/\D/g, ""); // remove pontos e traços
+      const cleanedCPF = cpf.replace(/\D/g, "");
 
       const response = await api.post("/auth/prontuario", {
         cpf: cleanedCPF,
@@ -53,34 +54,49 @@ function Prontuario() {
     doc.setFontSize(18);
     doc.text("Clínica Sorria Odonto", 105, 15, { align: "center" });
 
+    doc.setFontSize(10);
+    doc.text("CNPJ: 37.115.451/0001-84", 105, 22, { align: "center" });
+
     doc.setFontSize(14);
-    doc.text("Prontuário do Paciente", 105, 25, { align: "center" });
+    doc.text("Prontuário do Paciente", 105, 30, { align: "center" });
 
     const secoes = {
       "Dados Pessoais": [
-        "nomeCompleto", "email", "cpf", "telefone", "endereco", "dataNascimento"
+        "nomeCompleto", "email", "cpf", "telefone", "endereco", "dataNascimento", "image"
       ],
       "Saúde": [
-        "detalhesDoencas", "quaisRemedios", "quaisAnestesias", "frequenciaFumo", "frequenciaAlcool"
+        "detalhesDoencas", "quaisRemedios", "quaisAnestesias", "alergiaMedicamento"
       ],
-      "Informações Médicas": [
-        "historicoCirurgia", "exameSangue", "coagulacao", "cicatrizacao", "historicoOdontologico",
-        "sangramentoPosProcedimento", "respiracao", "peso"
+      "Hábitos": [
+        "habitos.frequenciaFumo", "habitos.frequenciaAlcool"
+      ],
+      "Exames": [
+        "exames.exameSangue", "exames.coagulacao", "exames.cicatrizacao"
+      ],
+      "Histórico Médico e Odontológico": [
+        "historicoCirurgia", "historicoOdontologico", "sangramentoPosProcedimento", "respiracao", "peso"
       ],
       "Procedimento": [
-        "profissional", "dataProcedimento", "modalidadePagamento", "valor"
+        "procedimento", "denteFace", "profissional", "dataProcedimento", "modalidadePagamento", "valor"
       ]
     };
 
-    let y = 35;
+    let y = 40;
 
     for (const secao in secoes) {
       const campos = secoes[secao];
       const linhas = [];
 
       campos.forEach((campo) => {
-        if (campo === "password" || campo === "image") return;
-        let valor = dados[campo];
+        if (campo === "password") return;
+
+        let valor;
+        if (campo.includes(".")) {
+          const [grupo, subcampo] = campo.split(".");
+          valor = dados[grupo]?.[subcampo];
+        } else {
+          valor = dados[campo];
+        }
 
         if (campo === "cpf" && valor) {
           valor = formatarCPF(valor);
@@ -88,6 +104,10 @@ function Prontuario() {
 
         if (campo.toLowerCase().includes("data") && valor) {
           valor = new Date(valor).toLocaleDateString("pt-BR");
+        }
+
+        if (campo === "valor" && valor) {
+          valor = `R$ ${valor.toFixed(2).replace(".", ",")}`;
         }
 
         linhas.push([formatarCampo(campo), valor || "-"]);
@@ -116,37 +136,36 @@ function Prontuario() {
 
   const formatarCampo = (campo) => {
     return campo
+      .replace(/\./g, " > ")
       .replace(/([A-Z])/g, " $1")
       .replace(/_/g, " ")
-      .replace(/^./, (str) => str.toUpperCase());
+      .replace(/\b\w/g, (l) => l.toUpperCase())
+      .trim();
   };
 
   return (
-    <div className={styles.prontuarioContainer}>
-      <div className={styles.prontuarioBox}>
-        <h2>Consultar Prontuário</h2>
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            placeholder="CPF"
-            value={cpf}
-            onChange={(e) => setCpf(formatarCPF(e.target.value))}
-          />
-          <input
-            type="password"
-            placeholder="Senha"
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-          />
-          <button type="submit" className={styles.btnDownload}>
-            <span className={styles.btnText}>Prontuário</span>
-            <i className="fas fa-paper-plane" />
-          </button>
-        </form>
-
+    <div className={styles.container}>
+      <form onSubmit={handleSubmit} className={styles.form}>
+        <h2>Buscar Prontuário</h2>
+        <input
+          type="text"
+          placeholder="CPF"
+          value={cpf}
+          onChange={(e) => setCpf(formatarCPF(e.target.value))}
+        />
+        <input
+          type="password"
+          placeholder="Senha"
+          value={senha}
+          onChange={(e) => setSenha(e.target.value)}
+        />
+        <button type="submit" className={styles.btnDownload}>
+          <span className={styles.buttonText}>Buscar</span>
+          <FaFilePdf className={styles.pdfIcon} />
+        </button>
         {error && <p className={styles.error}>{error}</p>}
-        {enviado && <div className={styles.prontuario}></div>}
-      </div>
+        {enviado && !error && <p className={styles.sucesso}>Prontuário gerado com sucesso!</p>}
+      </form>
     </div>
   );
 }

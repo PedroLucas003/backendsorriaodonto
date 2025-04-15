@@ -137,11 +137,16 @@ textarea:hover {
 
 textarea {
   resize: vertical;
-  min-height: 100px;
+  min-height: 60px; /* Reduzido de 100px */
 }
 
 .large-text-area {
   min-height: 120px;
+}
+
+/* Campos médios (para histórico odontológico e exame de sangue) */
+.medium-text-area {
+  min-height: 100px;
 }
 
 /* Botões Principais */
@@ -399,6 +404,7 @@ input[type="number"] {
     width: 100%;
   }
 }
+
 .search-bar {
   margin: 20px 0;
 }
@@ -415,4 +421,63 @@ input[type="number"] {
   background-color: #333;
   color: #fff;
   border-color: #555;
+}
+.resizable-textarea {
+  resize: vertical;
+  min-height: 60px;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+}
+
+/* Mantenha o estilo dos outros campos */
+.form-group textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+}
+.btn-voltar {
+  background-color: #4a6cf7;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 20px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  position: absolute;
+  left: 20px;
+  top: 20px;
+}
+
+.btn-voltar:hover {
+  background-color: #3a5ce4;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-voltar:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Ícone da seta (se estiver usando ícones) */
+.btn-voltar i {
+  font-size: 18px;
+}
+
+/* Se estiver usando SVG ou outro elemento para a seta */
+.btn-voltar svg {
+  width: 16px;
+  height: 16px;
+  fill: white;
 }

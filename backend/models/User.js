@@ -72,6 +72,11 @@ const UserSchema = new mongoose.Schema({
     required: [true, "Os medicamentos são obrigatórios"],
     trim: true
   },
+  quaisMedicamentos: {
+    type: String,
+    required: [true, "Os medicamentos são obrigatórios"],
+    trim: true
+  },
   quaisAnestesias: { 
     type: String, 
     required: [true, "As anestesias são obrigatórias"],
@@ -123,22 +128,16 @@ const UserSchema = new mongoose.Schema({
     trim: true
   },
 
-  // Informações do procedimento (atualizado)
+  // Informações do procedimento (MODIFICADO - removido enum)
   procedimento: {
     type: String,
     required: [true, "O procedimento é obrigatório"],
-    enum: ["Restauração", "Extração", "Limpeza", "Clareamento", "Implante", "Ortodontia", "Endodontia", "Cirurgia", "Prótese", "Outro"]
+    trim: true
   },
   denteFace: {
     type: String,
     required: [true, "Dente/Face é obrigatório"],
-    enum: [
-      "11", "12", "13", "14", "15", "16", "17", "18",
-      "21", "22", "23", "24", "25", "26", "27", "28",
-      "31", "32", "33", "34", "35", "36", "37", "38",
-      "41", "42", "43", "44", "45", "46", "47", "48",
-      "Face Lingual", "Face Vestibular", "Face Oclusal", "Face Mesial", "Face Distal"
-    ]
+    trim: true
   },
   peso: { 
     type: String,

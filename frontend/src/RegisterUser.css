@@ -312,6 +312,54 @@ th {
   cursor: pointer;
 }
 
+/* Estilos para validação */
+.error-field {
+  border-color: #ff4444 !important;
+  box-shadow: 0 0 5px rgba(255, 68, 68, 0.3) !important;
+}
+
+.field-error {
+  color: #ff4444;
+  font-size: 0.8rem;
+  margin-top: 5px;
+  display: block;
+}
+
+.error-message {
+  background-color: #ffebee;
+  color: #ff4444;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  border: 1px solid #ff4444;
+}
+
+.dark-mode .error-field {
+  border-color: #ff6666 !important;
+  box-shadow: 0 0 5px rgba(255, 102, 102, 0.5) !important;
+}
+
+.dark-mode .field-error {
+  color: #ff6666;
+}
+
+.dark-mode .error-message {
+  background-color: #2a0a0a;
+  color: #ff6666;
+  border-color: #ff6666;
+}
+
+/* Estilo específico para campo de peso */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
 /* Responsividade */
 @media (max-width: 1024px) {
   .form-grid {
@@ -350,4 +398,21 @@ th {
   .btn-view {
     width: 100%;
   }
+}
+.search-bar {
+  margin: 20px 0;
+}
+
+.search-bar input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.dark-mode .search-bar input {
+  background-color: #333;
+  color: #fff;
+  border-color: #555;
 }

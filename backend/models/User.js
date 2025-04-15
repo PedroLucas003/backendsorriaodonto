@@ -96,6 +96,7 @@ const UserSchema = new mongoose.Schema({
     }
   },
 
+  // Exames
   exames: {
     exameSangue: { 
       type: String,
@@ -111,21 +112,6 @@ const UserSchema = new mongoose.Schema({
     }
   },
 
-  procedimentos: {
-    sangramentoPosProcedimento: { 
-      type: String,
-      trim: true
-    },
-    quaisAnestesias: { 
-      type: String,
-      trim: true
-    },
-    respiracao: { 
-      type: String,
-      trim: true
-    }
-  },
-
   // Históricos
   historicoCirurgia: { 
     type: String, 
@@ -134,30 +120,26 @@ const UserSchema = new mongoose.Schema({
   },
   historicoOdontologico: { 
     type: String, 
-    required: [true, "O histórico odontológico é obrigatório"],
     trim: true
   },
 
-  // Novos campos
-  dataPrimeiraConsulta: { 
-    type: Date,
-    validate: {
-      validator: function(v) {
-        return !v || v < new Date();
-      },
-      message: "A data da primeira consulta não pode ser no futuro"
-    }
-  },
-  qualProcedimento: { 
+  // Informações do procedimento (atualizado)
+  procedimento: {
     type: String,
-    trim: true
+    required: [true, "O procedimento é obrigatório"],
+    enum: ["Restauração", "Extração", "Limpeza", "Clareamento", "Implante", "Ortodontia", "Endodontia", "Cirurgia", "Prótese", "Outro"]
   },
-  dente: { 
+  denteFace: {
     type: String,
-    trim: true
+    required: [true, "Dente/Face é obrigatório"],
+    enum: [
+      "11", "12", "13", "14", "15", "16", "17", "18",
+      "21", "22", "23", "24", "25", "26", "27", "28",
+      "31", "32", "33", "34", "35", "36", "37", "38",
+      "41", "42", "43", "44", "45", "46", "47", "48",
+      "Face Lingual", "Face Vestibular", "Face Oclusal", "Face Mesial", "Face Distal"
+    ]
   },
-
-  // Informações do procedimento
   peso: { 
     type: String,
     validate: {
@@ -177,9 +159,9 @@ const UserSchema = new mongoose.Schema({
     required: [true, "A data do procedimento é obrigatória"],
     validate: {
       validator: function(v) {
-        return v >= new Date(this.dataPrimeiraConsulta || 0);
+        return v >= new Date(this.dataNascimento);
       },
-      message: "Data do procedimento não pode ser antes da primeira consulta"
+      message: "Data do procedimento não pode ser antes da data de nascimento"
     }
   },
   modalidadePagamento: { 
@@ -192,19 +174,20 @@ const UserSchema = new mongoose.Schema({
     required: [true, "O valor é obrigatório"],
     min: [0, "O valor não pode ser negativo"]
   },
-
-  // Controle de acesso (ATUALIZAÇÕES ADICIONADAS)
-  autorizado: {
-    type: Boolean,
-    default: false // Novo campo para controle de acesso
+  sangramentoPosProcedimento: { 
+    type: String,
+    trim: true
   },
+  respiracao: { 
+    type: String,
+    trim: true
+  },
+
+  // Controle de acesso
   role: { 
     type: String, 
     default: "user",
     enum: ["user", "admin", "medico"]
-  },
-  dataAutorizacao: { // Novo campo para rastrear quando foi autorizado
-    type: Date
   },
   createdAt: { 
     type: Date, 
@@ -219,30 +202,39 @@ const UserSchema = new mongoose.Schema({
 
 // Índices
 UserSchema.index({ cpf: 1, email: 1 });
-UserSchema.index({ autorizado: 1 }); // Novo índice para otimizar consultas
 
 // Middleware para pré-processamento
 UserSchema.pre('save', function(next) {
+  // Formatação do nome
   if (this.isModified('nomeCompleto')) {
     this.nomeCompleto = this.nomeCompleto.trim();
   }
+  
+  // Formatação do CPF
   if (this.isModified('cpf') && !this.cpf.includes('.')) {
     this.cpf = this.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
   }
   
-  // Atualiza dataAutorizacao quando o campo autorizado é modificado para true
-  if (this.isModified('autorizado') && this.autorizado === true && !this.dataAutorizacao) {
-    this.dataAutorizacao = new Date();
+  // Garantir que dataProcedimento não seja anterior à dataNascimento
+  if (this.isModified('dataProcedimento') && this.dataProcedimento < this.dataNascimento) {
+    throw new Error("Data do procedimento não pode ser antes da data de nascimento");
   }
   
   next();
 });
 
-// Virtual
+// Virtual para nome formatado
 UserSchema.virtual('nomeFormatado').get(function() {
   return this.nomeCompleto.split(' ')
     .map(n => n.charAt(0).toUpperCase() + n.slice(1).toLowerCase())
     .join(' ');
+});
+
+// Virtual para idade
+UserSchema.virtual('idade').get(function() {
+  const diff = Date.now() - this.dataNascimento.getTime();
+  const ageDate = new Date(diff);
+  return Math.abs(ageDate.getUTCFullYear() - 1970);
 });
 
 const User = mongoose.model("User", UserSchema);

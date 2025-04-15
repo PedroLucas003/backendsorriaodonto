@@ -26,10 +26,12 @@ const RegisterUser = () => {
     sangramentoPosProcedimento: "",
     respiracao: "",
     peso: "",
-    profissional: "",
     dataProcedimento: "",
-    modalidadePagamento: "",
+    procedimento: "",
+    denteFace: "",
     valor: "",
+    modalidadePagamento: "",
+    profissional: "",
     image: null,
   });
 
@@ -37,6 +39,8 @@ const RegisterUser = () => {
   const [editandoId, setEditandoId] = useState(null);
   const [imagemModal, setImagemModal] = useState(null);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [searchTerm, setSearchTerm] = useState("");
 
   const modalidadesPagamento = [
     "Dinheiro",
@@ -55,10 +59,24 @@ const RegisterUser = () => {
     "Diariamente"
   ];
 
-  const opcoesSimNao = [
-    "Sim",
-    "Não",
-    "Não sei"
+  const procedimentosComuns = [
+    "Restauração",
+    "Extração",
+    "Limpeza",
+    "Clareamento",
+    "Implante",
+    "Ortodontia",
+    "Endodontia",
+    "Cirurgia",
+    "Prótese"
+  ];
+
+  const dentesFaces = [
+    "11", "12", "13", "14", "15", "16", "17", "18",
+    "21", "22", "23", "24", "25", "26", "27", "28",
+    "31", "32", "33", "34", "35", "36", "37", "38",
+    "41", "42", "43", "44", "45", "46", "47", "48",
+    "Face Lingual", "Face Vestibular", "Face Oclusal", "Face Mesial", "Face Distal"
   ];
 
   useEffect(() => {
@@ -103,11 +121,64 @@ const RegisterUser = () => {
     });
   };
 
+  const validateField = (name, value) => {
+    const errors = { ...fieldErrors };
+    
+    if (name === "peso") {
+      if (value && !/^\d*\.?\d*$/.test(value)) {
+        errors.peso = "O peso deve conter apenas números (ex: 70.5)";
+      } else {
+        delete errors.peso;
+      }
+    }
+    
+    if (name === "email") {
+      if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        errors.email = "Por favor, insira um e-mail válido";
+      } else {
+        delete errors.email;
+      }
+    }
+    
+    if (name === "dataNascimento") {
+      if (value) {
+        const birthDate = new Date(value);
+        const today = new Date();
+        if (birthDate >= today) {
+          errors.dataNascimento = "A data de nascimento deve ser no passado";
+        } else {
+          delete errors.dataNascimento;
+        }
+      }
+    }
+    
+    if (name === "dataProcedimento") {
+      if (value) {
+        const procedureDate = new Date(value);
+        if (isNaN(procedureDate.getTime())) {
+          errors.dataProcedimento = "Data inválida";
+        } else {
+          delete errors.dataProcedimento;
+        }
+      }
+    }
+    
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     
     let formattedValue = value;
-    if (name === "cpf") {
+    
+    if (name === "peso") {
+      formattedValue = value.replace(/[^0-9.]/g, "");
+      if ((formattedValue.match(/\./g) || []).length > 1) {
+        formattedValue = formattedValue.substring(0, formattedValue.lastIndexOf('.'));
+      }
+    }
+    else if (name === "cpf") {
       formattedValue = formatCPF(value);
     } else if (name === "telefone") {
       formattedValue = formatFone(value);
@@ -118,6 +189,7 @@ const RegisterUser = () => {
     }
 
     setFormData(prev => ({ ...prev, [name]: formattedValue }));
+    validateField(name, formattedValue);
     setError("");
   };
 
@@ -136,40 +208,60 @@ const RegisterUser = () => {
       detalhesDoencas: "Os detalhes sobre doenças são obrigatórios!",
       quaisRemedios: "Informação sobre medicamentos é obrigatória!",
       historicoCirurgia: "O histórico cirúrgico é obrigatório!",
-      profissional: "O profissional é obrigatório!",
       dataProcedimento: "A data do procedimento é obrigatória!",
+      procedimento: "O procedimento é obrigatório!",
+      denteFace: "Dente/Face é obrigatório!",
+      valor: "O valor é obrigatório!",
       modalidadePagamento: "A modalidade de pagamento é obrigatória!",
-      valor: "O valor é obrigatório!"
+      profissional: "O profissional é obrigatório!"
     };
+
+    const errors = {};
+    let isValid = true;
 
     for (const [field, message] of Object.entries(requiredFields)) {
       if (!formData[field]) {
-        setError(message);
-        return false;
+        errors[field] = message;
+        isValid = false;
       }
     }
 
     if (!editandoId && (!formData.password || !formData.confirmPassword)) {
-      setError("A senha e confirmação são obrigatórias para novo cadastro!");
-      return false;
+      errors.password = "A senha e confirmação são obrigatórias para novo cadastro!";
+      isValid = false;
     }
 
     if (!editandoId && formData.password !== formData.confirmPassword) {
-      setError("As senhas não coincidem!");
-      return false;
+      errors.confirmPassword = "As senhas não coincidem!";
+      isValid = false;
     }
 
     if (!/^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(formData.cpf)) {
-      setError("CPF inválido! Use o formato 000.000.000-00");
-      return false;
+      errors.cpf = "CPF inválido! Use o formato 000.000.000-00";
+      isValid = false;
     }
 
     if (!modalidadesPagamento.includes(formData.modalidadePagamento)) {
-      setError("Modalidade de pagamento inválida!");
-      return false;
+      errors.modalidadePagamento = "Modalidade de pagamento inválida!";
+      isValid = false;
     }
 
-    return true;
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = "Por favor, insira um e-mail válido";
+      isValid = false;
+    }
+
+    if (formData.dataNascimento) {
+      const birthDate = new Date(formData.dataNascimento);
+      const today = new Date();
+      if (birthDate >= today) {
+        errors.dataNascimento = "A data de nascimento deve ser no passado";
+        isValid = false;
+      }
+    }
+
+    setFieldErrors(errors);
+    return isValid;
   };
 
   const handleSubmit = async (e) => {
@@ -252,14 +344,17 @@ const RegisterUser = () => {
       sangramentoPosProcedimento: "",
       respiracao: "",
       peso: "",
-      profissional: "",
       dataProcedimento: "",
-      modalidadePagamento: "",
+      procedimento: "",
+      denteFace: "",
       valor: "",
+      modalidadePagamento: "",
+      profissional: "",
       image: null,
     });
     setEditandoId(null);
     setError("");
+    setFieldErrors({});
   };
 
   const handleEdit = (usuario) => {
@@ -281,7 +376,12 @@ const RegisterUser = () => {
       confirmPassword: "",
       image: null,
       historicoCirurgia: usuario.historicoCirurgia || "",
-      historicoOdontologico: usuario.historicoOdontologico || ""
+      historicoOdontologico: usuario.historicoOdontologico || "",
+      exameSangue: usuario.exames?.exameSangue || "",
+      coagulacao: usuario.exames?.coagulacao || "",
+      cicatrizacao: usuario.exames?.cicatrizacao || "",
+      procedimento: usuario.procedimento || "",
+      denteFace: usuario.denteFace || ""
     });
   };
 
@@ -313,6 +413,14 @@ const RegisterUser = () => {
     setDarkMode(!darkMode);
   };
 
+  const filteredUsuarios = usuarios.filter(usuario => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      usuario.nomeCompleto.toLowerCase().includes(searchLower) ||
+      usuario.cpf.includes(searchTerm.replace(/\D/g, ""))
+    );
+  });
+
   const labels = {
     nomeCompleto: "Nome completo *",
     email: "E-mail *",
@@ -323,7 +431,7 @@ const RegisterUser = () => {
     password: "Senha" + (editandoId ? "" : " *"),
     confirmPassword: "Confirmar senha" + (editandoId ? "" : " *"),
     detalhesDoencas: "Detalhes de doenças *",
-    quaisRemedios: "Quais remédios *",
+    quaisRemedios: "Alergia a medicamentos *",
     quaisAnestesias: "Quais anestesias",
     frequenciaFumo: "Frequência de fumo",
     frequenciaAlcool: "Frequência de álcool",
@@ -334,11 +442,13 @@ const RegisterUser = () => {
     historicoOdontologico: "Histórico odontológico",
     sangramentoPosProcedimento: "Sangramento pós-procedimento",
     respiracao: "Respiração",
-    peso: "Peso",
-    profissional: "Profissional *",
-    dataProcedimento: "Data do procedimento *",
+    peso: "Peso (kg)",
+    dataProcedimento: "Data *",
+    procedimento: "Procedimento *",
+    denteFace: "Dente/Face *",
+    valor: "Valor *",
     modalidadePagamento: "Modalidade de pagamento *",
-    valor: "Valor *"
+    profissional: "Profissional *"
   };
 
   return (
@@ -370,7 +480,9 @@ const RegisterUser = () => {
                   value={formData[key]}
                   onChange={handleChange}
                   required={(key !== 'password' && key !== 'confirmPassword') || !editandoId}
+                  className={fieldErrors[key] ? 'error-field' : ''}
                 />
+                {fieldErrors[key] && <span className="field-error">{fieldErrors[key]}</span>}
               </div>
             ))}
           </div>
@@ -380,46 +492,95 @@ const RegisterUser = () => {
           <h2>Histórico de Saúde</h2>
           <div className="form-grid">
             {['detalhesDoencas', 'quaisRemedios', 'quaisAnestesias', 'frequenciaFumo', 
-              'frequenciaAlcool', 'exameSangue', 'coagulacao', 'cicatrizacao', 
-              'sangramentoPosProcedimento', 'respiracao', 'peso'].map((key) => (
+              'frequenciaAlcool', 'respiracao', 'peso'].map((key) => (
               <div key={key} className="form-group">
                 <label htmlFor={key}>{labels[key]}</label>
                 {key === 'frequenciaFumo' || key === 'frequenciaAlcool' ? (
-                  <select
-                    id={key}
-                    name={key}
-                    value={formData[key]}
-                    onChange={handleChange}
-                  >
-                    <option value="">Selecione...</option>
-                    {frequencias.map((opcao) => (
-                      <option key={opcao} value={opcao}>{opcao}</option>
-                    ))}
-                  </select>
-                ) : key === 'exameSangue' || key === 'coagulacao' || key === 'cicatrizacao' ? (
-                  <select
-                    id={key}
-                    name={key}
-                    value={formData[key]}
-                    onChange={handleChange}
-                  >
-                    <option value="">Selecione...</option>
-                    {opcoesSimNao.map((opcao) => (
-                      <option key={opcao} value={opcao}>{opcao}</option>
-                    ))}
-                  </select>
+                  <>
+                    <select
+                      id={key}
+                      name={key}
+                      value={formData[key]}
+                      onChange={handleChange}
+                      className={fieldErrors[key] ? 'error-field' : ''}
+                    >
+                      <option value="">Selecione...</option>
+                      {frequencias.map((opcao) => (
+                        <option key={opcao} value={opcao}>{opcao}</option>
+                      ))}
+                    </select>
+                    {fieldErrors[key] && <span className="field-error">{fieldErrors[key]}</span>}
+                  </>
                 ) : (
-                  <input
-                    type="text"
-                    id={key}
-                    name={key}
-                    value={formData[key]}
-                    onChange={handleChange}
-                    required={key === 'detalhesDoencas' || key === 'quaisRemedios'}
-                  />
+                  <>
+                    <input
+                      type={key === 'peso' ? "number" : "text"}
+                      id={key}
+                      name={key}
+                      value={formData[key]}
+                      onChange={handleChange}
+                      required={key === 'detalhesDoencas' || key === 'quaisRemedios'}
+                      className={fieldErrors[key] ? 'error-field' : ''}
+                      step={key === 'peso' ? "0.1" : undefined}
+                    />
+                    {fieldErrors[key] && <span className="field-error">{fieldErrors[key]}</span>}
+                  </>
                 )}
               </div>
             ))}
+          </div>
+        </div>
+
+        <div className="form-section">
+          <h2>Exames e Sangramento</h2>
+          <div className="form-grid">
+            <div className="form-group full-width">
+              <label htmlFor="exameSangue">Exame de Sangue</label>
+              <textarea
+                id="exameSangue"
+                name="exameSangue"
+                value={formData.exameSangue}
+                onChange={handleChange}
+                rows={3}
+                className="large-text-area"
+              />
+            </div>
+
+            <div className="form-group full-width">
+              <label htmlFor="coagulacao">Coagulação</label>
+              <textarea
+                id="coagulacao"
+                name="coagulacao"
+                value={formData.coagulacao}
+                onChange={handleChange}
+                rows={3}
+                className="large-text-area"
+              />
+            </div>
+
+            <div className="form-group full-width">
+              <label htmlFor="cicatrizacao">Cicatrização</label>
+              <textarea
+                id="cicatrizacao"
+                name="cicatrizacao"
+                value={formData.cicatrizacao}
+                onChange={handleChange}
+                rows={3}
+                className="large-text-area"
+              />
+            </div>
+
+            <div className="form-group full-width">
+              <label htmlFor="sangramentoPosProcedimento">Sangramento Pós-Procedimento</label>
+              <textarea
+                id="sangramentoPosProcedimento"
+                name="sangramentoPosProcedimento"
+                value={formData.sangramentoPosProcedimento}
+                onChange={handleChange}
+                rows={3}
+                className="large-text-area"
+              />
+            </div>
           </div>
         </div>
 
@@ -435,8 +596,9 @@ const RegisterUser = () => {
                 onChange={handleChange}
                 rows={5}
                 required
-                className="large-text-area"
+                className={`large-text-area ${fieldErrors.historicoCirurgia ? 'error-field' : ''}`}
               />
+              {fieldErrors.historicoCirurgia && <span className="field-error">{fieldErrors.historicoCirurgia}</span>}
             </div>
 
             <div className="form-group full-width">
@@ -457,18 +619,6 @@ const RegisterUser = () => {
           <h2>Dados do Procedimento</h2>
           <div className="form-grid">
             <div className="form-group">
-              <label htmlFor="profissional">{labels.profissional}</label>
-              <input
-                type="text"
-                id="profissional"
-                name="profissional"
-                value={formData.profissional}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div className="form-group">
               <label htmlFor="dataProcedimento">{labels.dataProcedimento}</label>
               <input
                 type="date"
@@ -477,23 +627,46 @@ const RegisterUser = () => {
                 value={formData.dataProcedimento}
                 onChange={handleChange}
                 required
+                className={fieldErrors.dataProcedimento ? 'error-field' : ''}
               />
+              {fieldErrors.dataProcedimento && <span className="field-error">{fieldErrors.dataProcedimento}</span>}
             </div>
 
             <div className="form-group">
-              <label htmlFor="modalidadePagamento">{labels.modalidadePagamento}</label>
+              <label htmlFor="procedimento">{labels.procedimento}</label>
               <select
-                id="modalidadePagamento"
-                name="modalidadePagamento"
-                value={formData.modalidadePagamento}
+                id="procedimento"
+                name="procedimento"
+                value={formData.procedimento}
                 onChange={handleChange}
                 required
+                className={fieldErrors.procedimento ? 'error-field' : ''}
               >
                 <option value="">Selecione...</option>
-                {modalidadesPagamento.map((opcao) => (
-                  <option key={opcao} value={opcao}>{opcao}</option>
+                {procedimentosComuns.map((proc) => (
+                  <option key={proc} value={proc}>{proc}</option>
+                ))}
+                <option value="Outro">Outro</option>
+              </select>
+              {fieldErrors.procedimento && <span className="field-error">{fieldErrors.procedimento}</span>}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="denteFace">{labels.denteFace}</label>
+              <select
+                id="denteFace"
+                name="denteFace"
+                value={formData.denteFace}
+                onChange={handleChange}
+                required
+                className={fieldErrors.denteFace ? 'error-field' : ''}
+              >
+                <option value="">Selecione...</option>
+                {dentesFaces.map((dente) => (
+                  <option key={dente} value={dente}>{dente}</option>
                 ))}
               </select>
+              {fieldErrors.denteFace && <span className="field-error">{fieldErrors.denteFace}</span>}
             </div>
 
             <div className="form-group">
@@ -505,7 +678,41 @@ const RegisterUser = () => {
                 value={formData.valor}
                 onChange={handleChange}
                 required
+                className={fieldErrors.valor ? 'error-field' : ''}
               />
+              {fieldErrors.valor && <span className="field-error">{fieldErrors.valor}</span>}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="modalidadePagamento">{labels.modalidadePagamento}</label>
+              <select
+                id="modalidadePagamento"
+                name="modalidadePagamento"
+                value={formData.modalidadePagamento}
+                onChange={handleChange}
+                required
+                className={fieldErrors.modalidadePagamento ? 'error-field' : ''}
+              >
+                <option value="">Selecione...</option>
+                {modalidadesPagamento.map((opcao) => (
+                  <option key={opcao} value={opcao}>{opcao}</option>
+                ))}
+              </select>
+              {fieldErrors.modalidadePagamento && <span className="field-error">{fieldErrors.modalidadePagamento}</span>}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="profissional">{labels.profissional}</label>
+              <input
+                type="text"
+                id="profissional"
+                name="profissional"
+                value={formData.profissional}
+                onChange={handleChange}
+                required
+                className={fieldErrors.profissional ? 'error-field' : ''}
+              />
+              {fieldErrors.profissional && <span className="field-error">{fieldErrors.profissional}</span>}
             </div>
           </div>
         </div>
@@ -531,6 +738,14 @@ const RegisterUser = () => {
       </form>
 
       <h2>Usuários Cadastrados</h2>
+      <div className="search-bar">
+        <input
+          type="text"
+          placeholder="Pesquisar por CPF..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
       <div className="table-container">
         <table>
           <thead>
@@ -543,7 +758,7 @@ const RegisterUser = () => {
             </tr>
           </thead>
           <tbody>
-            {usuarios.map((usuario) => (
+            {filteredUsuarios.map((usuario) => (
               <tr key={usuario._id}>
                 <td>{usuario.nomeCompleto}</td>
                 <td>{formatCPF(usuario.cpf)}</td>

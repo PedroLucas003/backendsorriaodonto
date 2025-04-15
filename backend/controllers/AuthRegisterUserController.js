@@ -30,6 +30,8 @@ module.exports = class AuthRegisterUserController {
       sangramentoPosProcedimento,
       respiracao,
       peso,
+      procedimento,
+      denteFace,
       profissional,
       dataProcedimento,
       modalidadePagamento,
@@ -42,6 +44,7 @@ module.exports = class AuthRegisterUserController {
       image = req.file.filename;
     }
 
+    // Validações atualizadas
     const requiredFields = {
       nomeCompleto: "O nome completo é obrigatório!",
       email: "O email é obrigatório!",
@@ -53,6 +56,8 @@ module.exports = class AuthRegisterUserController {
       detalhesDoencas: "Os detalhes sobre doenças são obrigatórios!",
       quaisRemedios: "Informação sobre medicamentos é obrigatória!",
       historicoCirurgia: "O histórico cirúrgico é obrigatório!",
+      procedimento: "O procedimento é obrigatório!",
+      denteFace: "Dente/Face é obrigatório!",
       profissional: "O profissional é obrigatório!",
       dataProcedimento: "A data do procedimento é obrigatória!",
       modalidadePagamento: "A modalidade de pagamento é obrigatória!",
@@ -69,15 +74,17 @@ module.exports = class AuthRegisterUserController {
       return res.status(422).json({ message: "As senhas não são iguais!" });
     }
 
+    // Verifica se usuário já existe
     const userExist = await User.findOne({ cpf: cpf });
-
     if (userExist) {
       return res.status(422).json({ message: "Já existe um usuário com esse CPF!" });
     }
 
+    // Criptografia da senha
     const salt = await bcrypt.genSalt(12);
     const passwordHash = await bcrypt.hash(password, salt);
 
+    // Criação do usuário com os novos campos
     const user = new User({
       nomeCompleto,
       email,
@@ -90,16 +97,22 @@ module.exports = class AuthRegisterUserController {
       detalhesDoencas,
       quaisRemedios,
       quaisAnestesias,
-      frequenciaFumo,
-      frequenciaAlcool,
+      habitos: {
+        frequenciaFumo,
+        frequenciaAlcool
+      },
       historicoCirurgia,
-      exameSangue,
-      coagulacao,
-      cicatrizacao,
+      exames: {
+        exameSangue,
+        coagulacao,
+        cicatrizacao
+      },
       historicoOdontologico,
       sangramentoPosProcedimento,
       respiracao,
       peso,
+      procedimento,
+      denteFace,
       profissional,
       dataProcedimento,
       modalidadePagamento,
@@ -108,10 +121,22 @@ module.exports = class AuthRegisterUserController {
 
     try {
       await user.save();
-      res.status(201).json({ message: "Usuário cadastrado com sucesso!", user });
+      res.status(201).json({ 
+        message: "Usuário cadastrado com sucesso!",
+        user: {
+          _id: user._id,
+          nomeCompleto: user.nomeCompleto,
+          email: user.email,
+          procedimento: user.procedimento,
+          denteFace: user.denteFace
+        }
+      });
     } catch (error) {
       console.error(error);
-      res.status(500).json({ message: "Ocorreu um erro ao cadastrar o usuário, tente mais tarde!" });
+      res.status(500).json({ 
+        message: "Ocorreu um erro ao cadastrar o usuário",
+        error: error.message 
+      });
     }
   }
 
@@ -121,7 +146,10 @@ module.exports = class AuthRegisterUserController {
       res.json(users);
     } catch (error) {
       console.error(error);
-      res.status(500).json({ message: "Erro ao buscar usuários." });
+      res.status(500).json({ 
+        message: "Erro ao buscar usuários.",
+        error: error.message 
+      });
     }
   }
 
@@ -135,12 +163,14 @@ module.exports = class AuthRegisterUserController {
         return res.status(404).json({ message: "Usuário não encontrado." });
       }
 
+      // Atualização de imagem
       if (req.file) {
         userData.image = req.file.filename;
       } else {
         userData.image = existingUser.image;
       }
 
+      // Atualização de senha
       if (!userData.password) {
         userData.password = existingUser.password;
       } else {
@@ -148,12 +178,40 @@ module.exports = class AuthRegisterUserController {
         userData.password = await bcrypt.hash(userData.password, salt);
       }
 
-      const updatedUser = await User.findByIdAndUpdate(id, userData, { new: true });
-      res.json({ message: "Usuário atualizado com sucesso!", user: updatedUser });
+      // Atualização dos exames
+      if (userData.exameSangue || userData.coagulacao || userData.cicatrizacao) {
+        userData.exames = {
+          exameSangue: userData.exameSangue || existingUser.exames?.exameSangue,
+          coagulacao: userData.coagulacao || existingUser.exames?.coagulacao,
+          cicatrizacao: userData.cicatrizacao || existingUser.exames?.cicatrizacao
+        };
+      }
+
+      // Atualização dos hábitos
+      if (userData.frequenciaFumo || userData.frequenciaAlcool) {
+        userData.habitos = {
+          frequenciaFumo: userData.frequenciaFumo || existingUser.habitos?.frequenciaFumo,
+          frequenciaAlcool: userData.frequenciaAlcool || existingUser.habitos?.frequenciaAlcool
+        };
+      }
+
+      const updatedUser = await User.findByIdAndUpdate(
+        id, 
+        { $set: userData },
+        { new: true, runValidators: true }
+      );
+
+      res.json({ 
+        message: "Usuário atualizado com sucesso!",
+        user: updatedUser 
+      });
 
     } catch (error) {
       console.error(error);
-      res.status(500).json({ message: "Erro ao atualizar usuário." });
+      res.status(500).json({ 
+        message: "Erro ao atualizar usuário.",
+        error: error.message 
+      });
     }
   }
 
@@ -170,87 +228,56 @@ module.exports = class AuthRegisterUserController {
       res.json({ message: "Usuário excluído com sucesso!" });
     } catch (error) {
       console.error(error);
-      res.status(500).json({ message: "Erro ao excluir usuário." });
+      res.status(500).json({ 
+        message: "Erro ao excluir usuário.",
+        error: error.message 
+      });
     }
   }
 
   static async loginUser(req, res) {
     const { cpf, password } = req.body;
   
-    // 1. Validação básica
     if (!cpf || !password) {
       return res.status(422).json({ message: "CPF e senha são obrigatórios!" });
     }
   
     try {
-      // 2. Limpa formatação do CPF
       const cpfLimpo = cpf.replace(/\D/g, '');
   
-      // 3. Busca usuário (APENAS se estiver autorizado)
-      const user = await User.findOne({ 
-        cpf: cpfLimpo,
-        autorizado: true // ← Filtro chave!
-      }).select('+password');
+      const user = await User.findOne({ cpf: cpfLimpo }).select('+password');
   
-      // 4. Verificações
       if (!user) {
-        return res.status(403).json({ 
-          message: "Acesso não autorizado ou usuário não encontrado" 
-        });
+        return res.status(403).json({ message: "Acesso não autorizado ou usuário não encontrado" });
       }
   
-      // 5. Valida senha
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
         return res.status(401).json({ message: "Senha incorreta!" });
       }
   
-      // 6. Gera token
       const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
         expiresIn: "1h"
       });
   
-      // 7. Retorna dados
       res.status(200).json({
         token,
         user: {
           id: user._id,
           nomeCompleto: user.nomeCompleto,
-          email: user.email
+          email: user.email,
+          role: user.role
         }
       });
   
     } catch (error) {
       console.error("Erro no login:", error);
-      res.status(500).json({ message: "Erro no servidor, tente novamente!" });
-    }
-  }
-
-  static async autorizarUsuario(req, res) {
-    const { cpf } = req.body;
-  
-    try {
-      const cpfLimpo = cpf.replace(/\D/g, '');
-      const user = await User.findOneAndUpdate(
-        { cpf: cpfLimpo },
-        { $set: { autorizado: true } },
-        { new: true }
-      );
-  
-      if (!user) {
-        return res.status(404).json({ message: "Usuário não encontrado!" });
-      }
-  
-      res.status(200).json({ 
-        message: "Acesso autorizado com sucesso!",
-        user 
+      res.status(500).json({ 
+        message: "Erro no servidor, tente novamente!",
+        error: error.message 
       });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Erro ao autorizar usuário" });
     }
   }
-
 
   static async getProntuario(req, res) {
     const { cpf, password } = req.body;
@@ -260,27 +287,23 @@ module.exports = class AuthRegisterUserController {
     }
   
     try {
-      // Limpa o CPF (remove pontos e traços)
       const cleanedCPF = cpf.replace(/\D/g, "");
-  
-      // Busca o usuário incluindo o campo password (que está com select: false no modelo)
       const user = await User.findOne({ cpf: cleanedCPF }).select('+password');
       
       if (!user) {
         return res.status(404).json({ message: "Paciente não encontrado!" });
       }
   
-      // Verifica a senha
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
         return res.status(401).json({ message: "Senha incorreta!" });
       }
   
-      // Formata os dados do prontuário (sem expor a senha)
+      // Retorna os dados formatados com os novos campos
       const prontuario = {
         nomeCompleto: user.nomeCompleto,
         email: user.email,
-        cpf: user.cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4"), // Formata CPF
+        cpf: user.cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4"),
         telefone: user.telefone,
         endereco: user.endereco,
         dataNascimento: user.dataNascimento,
@@ -294,21 +317,25 @@ module.exports = class AuthRegisterUserController {
         coagulacao: user.exames?.coagulacao || "",
         cicatrizacao: user.exames?.cicatrizacao || "",
         historicoOdontologico: user.historicoOdontologico,
-        sangramentoPosProcedimento: user.procedimentos?.sangramentoPosProcedimento || "",
-        respiracao: user.procedimentos?.respiracao || "",
+        sangramentoPosProcedimento: user.sangramentoPosProcedimento,
+        respiracao: user.respiracao,
         peso: user.peso,
+        procedimento: user.procedimento,
+        denteFace: user.denteFace,
         profissional: user.profissional,
         dataProcedimento: user.dataProcedimento,
         modalidadePagamento: user.modalidadePagamento,
         valor: user.valor,
-        // Adicione outros campos conforme necessário
+        image: user.image
       };
   
       return res.status(200).json(prontuario);
     } catch (error) {
       console.error("Erro ao buscar prontuário:", error);
-      res.status(500).json({ message: "Erro no servidor, tente novamente!" });
+      res.status(500).json({ 
+        message: "Erro no servidor, tente novamente!",
+        error: error.message 
+      });
     }
   }
-  
 };

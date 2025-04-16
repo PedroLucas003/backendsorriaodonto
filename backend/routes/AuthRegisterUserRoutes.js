@@ -48,7 +48,7 @@ router.delete("/auth/users/:id", verifyToken, AuthRegisterUserController.deleteU
 //Autorizar o acesso do usuario
 // router.post('/auth/autorizar', verifyToken, AuthRegisterUserController.autorizarUsuario);
 
-router.post('/:id/procedimentos', AuthMiddleware, AuthRegisterUserController.addProcedimento);
+// router.put('/users/:id/procedimento', authMiddleware, AuthRegisterUserController.addProcedimento);
 
 // Rota para servir imagens
 router.get("/imagens/:nomeArquivo", (req, res) => {

@@ -106,74 +106,92 @@ const RegisterUser = () => {
   const validateField = (name, value) => {
     const errors = { ...fieldErrors };
 
+    // Validação do peso
     if (name === "peso") {
-      if (value && !/^\d*\.?\d*$/.test(value)) {
-        errors.peso = "O peso deve conter apenas números (ex: 70.5)";
-      } else {
-        delete errors.peso;
-      }
+        if (value && !/^\d*\.?\d*$/.test(value)) {
+            errors.peso = "O peso deve conter apenas números (ex: 70.5)";
+        } else {
+            delete errors.peso;
+        }
     }
 
+    // Validação do email
     if (name === "email") {
-      if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-        errors.email = "Por favor, insira um e-mail válido";
-      } else {
-        delete errors.email;
-      }
+        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+            errors.email = "Por favor, insira um e-mail válido";
+        } else {
+            delete errors.email;
+        }
     }
 
+    // Validação da data de nascimento
     if (name === "dataNascimento") {
-      if (value) {
-        const birthDate = new Date(value);
-        const today = new Date();
-        if (birthDate >= today) {
-          errors.dataNascimento = "A data de nascimento deve ser no passado";
-        } else {
-          delete errors.dataNascimento;
+        if (value) {
+            const birthDate = new Date(value);
+            const today = new Date();
+            
+            // Verifica se é data futura
+            if (birthDate >= today) {
+                errors.dataNascimento = "A data de nascimento deve ser no passado";
+            } 
+            // Verifica se é anterior à data do procedimento (se existir)
+            else if (formData.dataProcedimento && birthDate > new Date(formData.dataProcedimento)) {
+                errors.dataNascimento = "Data de nascimento não pode ser depois da data do procedimento";
+            } 
+            else {
+                delete errors.dataNascimento;
+            }
         }
-      }
     }
 
+    // Validação da data do procedimento
     if (name === "dataProcedimento") {
-      if (value) {
-        const procedureDate = new Date(value);
-        if (isNaN(procedureDate.getTime())) {
-          errors.dataProcedimento = "Data inválida";
-        } else {
-          delete errors.dataProcedimento;
+        if (value) {
+            const procedureDate = new Date(value);
+            
+            // Verifica se é uma data válida
+            if (isNaN(procedureDate.getTime())) {
+                errors.dataProcedimento = "Data inválida";
+            } 
+            // Verifica se é anterior à data de nascimento (se existir)
+            else if (formData.dataNascimento && procedureDate < new Date(formData.dataNascimento)) {
+                errors.dataProcedimento = "Data do procedimento não pode ser antes da data de nascimento";
+            } 
+            else {
+                delete errors.dataProcedimento;
+            }
         }
-      }
     }
 
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
-  };
+};
 
-  const handleChange = (e) => {
+const handleChange = (e) => {
     const { name, value } = e.target;
 
     let formattedValue = value;
 
     if (name === "peso") {
-      formattedValue = value.replace(/[^0-9.]/g, "");
-      if ((formattedValue.match(/\./g) || []).length > 1) {
-        formattedValue = formattedValue.substring(0, formattedValue.lastIndexOf('.'));
-      }
+        formattedValue = value.replace(/[^0-9.]/g, "");
+        if ((formattedValue.match(/\./g) || []).length > 1) {
+            formattedValue = formattedValue.substring(0, formattedValue.lastIndexOf('.'));
+        }
     }
     else if (name === "cpf") {
-      formattedValue = formatCPF(value);
+        formattedValue = formatCPF(value);
     } else if (name === "telefone") {
-      formattedValue = formatFone(value);
+        formattedValue = formatFone(value);
     } else if (name === "valor") {
-      formattedValue = formatValor(value);
+        formattedValue = formatValor(value);
     } else {
-      formattedValue = value;
+        formattedValue = value;
     }
 
     setFormData(prev => ({ ...prev, [name]: formattedValue }));
     validateField(name, formattedValue);
     setError("");
-  };
+};
 
   const handleFileChange = (e) => {
     setFormData(prev => ({ ...prev, image: e.target.files[0] }));
@@ -252,58 +270,75 @@ const RegisterUser = () => {
 
     if (!validateForm()) return;
 
+    // Validação explícita das datas antes de enviar
+    if (formData.dataProcedimento && formData.dataNascimento) {
+        const procDate = new Date(formData.dataProcedimento);
+        const birthDate = new Date(formData.dataNascimento);
+        
+        if (procDate < birthDate) {
+            setError("Data do procedimento não pode ser antes da data de nascimento");
+            return;
+        }
+    }
+
     const token = localStorage.getItem("token");
     const formDataToSend = new FormData();
 
     Object.keys(formData).forEach((key) => {
-      if (key === "image") {
-        if (formData[key]) formDataToSend.append(key, formData[key]);
-      } else {
-        let value = formData[key];
+        if (key === "image") {
+            if (formData[key]) formDataToSend.append(key, formData[key]);
+        } else {
+            let value = formData[key];
 
-        if (key === "cpf" || key === "telefone") {
-          value = value.replace(/\D/g, "");
-        } else if (key === "valor") {
-          value = value.replace(/[^\d,]/g, "").replace(",", ".");
-        }
+            if (key === "cpf" || key === "telefone") {
+                value = String(value).replace(/\D/g, "");
+            } else if (key === "valor") {
+                value = String(value).replace(/[^\d,]/g, "").replace(",", ".");
+            }
+            
+            if ((key === "password" || key === "confirmPassword") && !value && editandoId) {
+                return;
+            }
 
-        if ((key === "password" || key === "confirmPassword") && !value && editandoId) {
-          return;
+            if (value !== null && value !== undefined) {
+                formDataToSend.append(key, value);
+            }
         }
-
-        if (value !== null && value !== undefined) {
-          formDataToSend.append(key, value);
-        }
-      }
     });
 
     try {
-      if (editandoId) {
-        await api.put(`/auth/users/${editandoId}`, formDataToSend, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data"
-          },
-        });
-        alert("Usuário atualizado com sucesso!");
-        setModoVisualizacao(false);
-      } else {
-        await api.post("/auth/register/user", formDataToSend, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data"
-          },
-        });
-        alert("Usuário cadastrado com sucesso!");
-      }
+        if (editandoId) {
+            await api.put(`/auth/users/${editandoId}`, formDataToSend, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "multipart/form-data"
+                },
+            });
+            alert("Usuário atualizado com sucesso!");
+            setModoVisualizacao(false);
+        } else {
+            await api.post("/auth/register/user", formDataToSend, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "multipart/form-data"
+                },
+            });
+            alert("Usuário cadastrado com sucesso!");
+        }
 
-      resetForm();
-      fetchUsuarios();
+        resetForm();
+        fetchUsuarios();
     } catch (error) {
-      console.error("Erro ao salvar usuário:", error);
-      setError(error.response?.data?.message || "Erro ao salvar usuário. Verifique os dados e tente novamente.");
+        console.error("Erro ao salvar usuário:", error);
+        // Tratamento mais específico para erros de validação
+        if (error.response?.data?.errors) {
+            setFieldErrors(error.response.data.errors);
+        } else {
+            setError(error.response?.data?.message || "Erro ao salvar usuário. Verifique os dados e tente novamente.");
+        }
     }
-  };
+};
+
 
   const resetForm = () => {
     setFormData({

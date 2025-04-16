@@ -91,12 +91,12 @@ const UserSchema = new mongoose.Schema({
   habitos: {
     frequenciaFumo: { 
       type: String,
-      enum: ["Nunca", "Ocasionalmente", "Frequentemente", "Diariamente", ""],
+      enum: ["Nunca","Raramente","Ocasionalmente", "Frequentemente", "Diariamente", ""],
       default: ""
     },
     frequenciaAlcool: { 
       type: String,
-      enum: ["Nunca", "Ocasionalmente", "Frequentemente", "Diariamente", ""],
+      enum: ["Nunca", "Raramente","Ocasionalmente", "Frequentemente", "Diariamente", ""],
       default: ""
     }
   },
@@ -158,7 +158,9 @@ const UserSchema = new mongoose.Schema({
     required: [true, "A data do procedimento é obrigatória"],
     validate: {
       validator: function(v) {
-        return v >= new Date(this.dataNascimento);
+        // Verifica se dataNascimento existe no documento atual ou nos dados sendo atualizados
+        const birthDate = this.dataNascimento || (this._update && this._update.$set && this._update.$set.dataNascimento);
+        return v >= new Date(birthDate);
       },
       message: "Data do procedimento não pode ser antes da data de nascimento"
     }

@@ -166,6 +166,34 @@ module.exports = class AuthRegisterUserController {
         return res.status(404).json({ message: "Usuário não encontrado." });
       }
 
+      // VERIFICAÇÃO EXPLÍCITA DAS DATAS
+      // Se estiver atualizando dataProcedimento, verifica se não é anterior à dataNascimento
+      if (userData.dataProcedimento) {
+        const procDate = new Date(userData.dataProcedimento);
+        const birthDate = userData.dataNascimento 
+          ? new Date(userData.dataNascimento) 
+          : new Date(existingUser.dataNascimento);
+        
+        if (procDate < birthDate) {
+          return res.status(400).json({
+            error: true,
+            message: "Data do procedimento não pode ser antes da data de nascimento"
+          });
+        }
+      }
+      // Se estiver atualizando dataNascimento, verifica se não é posterior à dataProcedimento
+      else if (userData.dataNascimento) {
+        const birthDate = new Date(userData.dataNascimento);
+        const procDate = new Date(existingUser.dataProcedimento);
+        
+        if (birthDate > procDate) {
+          return res.status(400).json({
+            error: true,
+            message: "Data de nascimento não pode ser depois da data do procedimento"
+          });
+        }
+      }
+
       // Atualização de imagem
       if (req.file) {
         userData.image = req.file.filename;
@@ -201,7 +229,11 @@ module.exports = class AuthRegisterUserController {
       const updatedUser = await User.findByIdAndUpdate(
         id, 
         { $set: userData },
-        { new: true, runValidators: true }
+        { 
+          new: true, 
+          runValidators: true,
+          context: 'query' // Isso ajuda na validação durante updates
+        }
       );
 
       res.json({ 
@@ -211,7 +243,22 @@ module.exports = class AuthRegisterUserController {
 
     } catch (error) {
       console.error(error);
+      
+      // Tratamento específico para erros de validação
+      if (error.name === 'ValidationError') {
+        const errors = {};
+        Object.keys(error.errors).forEach(key => {
+          errors[key] = error.errors[key].message;
+        });
+        return res.status(400).json({
+          error: true,
+          message: "Erro de validação",
+          errors
+        });
+      }
+      
       res.status(500).json({ 
+        error: true,
         message: "Erro ao atualizar usuário.",
         error: error.message 
       });

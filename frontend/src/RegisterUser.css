@@ -481,3 +481,84 @@ input[type="number"] {
   height: 16px;
   fill: white;
 }
+/* Estilos para a seção de procedimentos */
+.procedimentos-section {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.procedimento-form {
+  margin: 1rem 0;
+  padding: 1.5rem;
+  background-color: #fff;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.procedimentos-list {
+  margin-top: 1.5rem;
+}
+
+.procedimento-item {
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  background-color: #fff;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.procedimento-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.procedimento-details p {
+  margin: 0.5rem 0;
+  color: #555;
+}
+
+.btn-add-procedimento {
+  background-color: #28a745;
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s;
+}
+
+.btn-add-procedimento:hover {
+  background-color: #218838;
+}
+
+.btn-confirm-procedimento {
+  background-color: #007bff;
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+  transition: background-color 0.3s;
+}
+
+.btn-confirm-procedimento:hover {
+  background-color: #0069d9;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .procedimento-form .form-grid {
+    grid-template-columns: 1fr;
+  }
+}

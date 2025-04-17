@@ -34,6 +34,7 @@ const RegisterUser = () => {
     modalidadePagamento: "",
     profissional: "",
     image: null,
+    procedimentos: []
   });
 
   const [usuarios, setUsuarios] = useState([]);
@@ -43,6 +44,16 @@ const RegisterUser = () => {
   const [fieldErrors, setFieldErrors] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
   const [modoVisualizacao, setModoVisualizacao] = useState(false);
+  const [showProcedimentoForm, setShowProcedimentoForm] = useState(false);
+  const [procedimentoData, setProcedimentoData] = useState({
+    dataProcedimento: "",
+    procedimento: "",
+    denteFace: "",
+    valor: "",
+    modalidadePagamento: "",
+    profissional: "",
+    observacoes: ""
+  });
 
   const modalidadesPagamento = [
     "Dinheiro",
@@ -55,7 +66,6 @@ const RegisterUser = () => {
 
   const frequencias = [
     "Nunca",
-    "Raramente",
     "Ocasionalmente",
     "Frequentemente",
     "Diariamente"
@@ -106,92 +116,74 @@ const RegisterUser = () => {
   const validateField = (name, value) => {
     const errors = { ...fieldErrors };
 
-    // Validação do peso
     if (name === "peso") {
-        if (value && !/^\d*\.?\d*$/.test(value)) {
-            errors.peso = "O peso deve conter apenas números (ex: 70.5)";
-        } else {
-            delete errors.peso;
-        }
+      if (value && !/^\d*\.?\d*$/.test(value)) {
+        errors.peso = "O peso deve conter apenas números (ex: 70.5)";
+      } else {
+        delete errors.peso;
+      }
     }
 
-    // Validação do email
     if (name === "email") {
-        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-            errors.email = "Por favor, insira um e-mail válido";
-        } else {
-            delete errors.email;
-        }
+      if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        errors.email = "Por favor, insira um e-mail válido";
+      } else {
+        delete errors.email;
+      }
     }
 
-    // Validação da data de nascimento
     if (name === "dataNascimento") {
-        if (value) {
-            const birthDate = new Date(value);
-            const today = new Date();
-            
-            // Verifica se é data futura
-            if (birthDate >= today) {
-                errors.dataNascimento = "A data de nascimento deve ser no passado";
-            } 
-            // Verifica se é anterior à data do procedimento (se existir)
-            else if (formData.dataProcedimento && birthDate > new Date(formData.dataProcedimento)) {
-                errors.dataNascimento = "Data de nascimento não pode ser depois da data do procedimento";
-            } 
-            else {
-                delete errors.dataNascimento;
-            }
+      if (value) {
+        const birthDate = new Date(value);
+        const today = new Date();
+        if (birthDate >= today) {
+          errors.dataNascimento = "A data de nascimento deve ser no passado";
+        } else {
+          delete errors.dataNascimento;
         }
+      }
     }
 
-    // Validação da data do procedimento
     if (name === "dataProcedimento") {
-        if (value) {
-            const procedureDate = new Date(value);
-            
-            // Verifica se é uma data válida
-            if (isNaN(procedureDate.getTime())) {
-                errors.dataProcedimento = "Data inválida";
-            } 
-            // Verifica se é anterior à data de nascimento (se existir)
-            else if (formData.dataNascimento && procedureDate < new Date(formData.dataNascimento)) {
-                errors.dataProcedimento = "Data do procedimento não pode ser antes da data de nascimento";
-            } 
-            else {
-                delete errors.dataProcedimento;
-            }
+      if (value) {
+        const procedureDate = new Date(value);
+        if (isNaN(procedureDate.getTime())) {
+          errors.dataProcedimento = "Data inválida";
+        } else {
+          delete errors.dataProcedimento;
         }
+      }
     }
 
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
-};
+  };
 
-const handleChange = (e) => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
 
     let formattedValue = value;
 
     if (name === "peso") {
-        formattedValue = value.replace(/[^0-9.]/g, "");
-        if ((formattedValue.match(/\./g) || []).length > 1) {
-            formattedValue = formattedValue.substring(0, formattedValue.lastIndexOf('.'));
-        }
+      formattedValue = value.replace(/[^0-9.]/g, "");
+      if ((formattedValue.match(/\./g) || []).length > 1) {
+        formattedValue = formattedValue.substring(0, formattedValue.lastIndexOf('.'));
+      }
     }
     else if (name === "cpf") {
-        formattedValue = formatCPF(value);
+      formattedValue = formatCPF(value);
     } else if (name === "telefone") {
-        formattedValue = formatFone(value);
+      formattedValue = formatFone(value);
     } else if (name === "valor") {
-        formattedValue = formatValor(value);
+      formattedValue = formatValor(value);
     } else {
-        formattedValue = value;
+      formattedValue = value;
     }
 
     setFormData(prev => ({ ...prev, [name]: formattedValue }));
     validateField(name, formattedValue);
     setError("");
-};
+  };
 
   const handleFileChange = (e) => {
     setFormData(prev => ({ ...prev, image: e.target.files[0] }));
@@ -265,80 +257,97 @@ const handleChange = (e) => {
     return isValid;
   };
 
+  const handleAddProcedimento = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await api.put(`/auth/users/${editandoId}/procedimento`, {
+        dataProcedimento: procedimentoData.dataProcedimento,
+        procedimento: procedimentoData.procedimento,
+        denteFace: procedimentoData.denteFace,
+        valor: parseFloat(procedimentoData.valor.replace(/[^\d,]/g, '').replace(',', '.')),
+        modalidadePagamento: procedimentoData.modalidadePagamento,
+        profissional: procedimentoData.profissional,
+        observacoes: procedimentoData.observacoes
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      alert("Procedimento adicionado com sucesso!");
+      setShowProcedimentoForm(false);
+      setProcedimentoData({
+        dataProcedimento: '',
+        procedimento: '',
+        denteFace: '',
+        valor: '',
+        modalidadePagamento: '',
+        profissional: '',
+        observacoes: ''
+      });
+      
+      handleEdit(response.data.user);
+    } catch (error) {
+      console.error("Erro ao adicionar procedimento:", error);
+      setError(error.response?.data?.message || "Erro ao adicionar procedimento");
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!validateForm()) return;
 
-    // Validação explícita das datas antes de enviar
-    if (formData.dataProcedimento && formData.dataNascimento) {
-        const procDate = new Date(formData.dataProcedimento);
-        const birthDate = new Date(formData.dataNascimento);
-        
-        if (procDate < birthDate) {
-            setError("Data do procedimento não pode ser antes da data de nascimento");
-            return;
-        }
-    }
-
     const token = localStorage.getItem("token");
     const formDataToSend = new FormData();
 
     Object.keys(formData).forEach((key) => {
-        if (key === "image") {
-            if (formData[key]) formDataToSend.append(key, formData[key]);
-        } else {
-            let value = formData[key];
+      if (key === "image") {
+        if (formData[key]) formDataToSend.append(key, formData[key]);
+      } else {
+        let value = formData[key];
 
-            if (key === "cpf" || key === "telefone") {
-                value = String(value).replace(/\D/g, "");
-            } else if (key === "valor") {
-                value = String(value).replace(/[^\d,]/g, "").replace(",", ".");
-            }
-            
-            if ((key === "password" || key === "confirmPassword") && !value && editandoId) {
-                return;
-            }
-
-            if (value !== null && value !== undefined) {
-                formDataToSend.append(key, value);
-            }
+        if (key === "cpf" || key === "telefone") {
+          value = String(value).replace(/\D/g, "");
+        } else if (key === "valor") {
+          value = String(value).replace(/[^\d,]/g, "").replace(",", ".");
         }
+        
+        if ((key === "password" || key === "confirmPassword") && !value && editandoId) {
+          return;
+        }
+
+        if (value !== null && value !== undefined) {
+          formDataToSend.append(key, value);
+        }
+      }
     });
 
     try {
-        if (editandoId) {
-            await api.put(`/auth/users/${editandoId}`, formDataToSend, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "multipart/form-data"
-                },
-            });
-            alert("Usuário atualizado com sucesso!");
-            setModoVisualizacao(false);
-        } else {
-            await api.post("/auth/register/user", formDataToSend, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "multipart/form-data"
-                },
-            });
-            alert("Usuário cadastrado com sucesso!");
-        }
+      if (editandoId) {
+        await api.put(`/auth/users/${editandoId}`, formDataToSend, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data"
+          },
+        });
+        alert("Usuário atualizado com sucesso!");
+        setModoVisualizacao(false);
+      } else {
+        await api.post("/auth/register/user", formDataToSend, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data"
+          },
+        });
+        alert("Usuário cadastrado com sucesso!");
+      }
 
-        resetForm();
-        fetchUsuarios();
+      resetForm();
+      fetchUsuarios();
     } catch (error) {
-        console.error("Erro ao salvar usuário:", error);
-        // Tratamento mais específico para erros de validação
-        if (error.response?.data?.errors) {
-            setFieldErrors(error.response.data.errors);
-        } else {
-            setError(error.response?.data?.message || "Erro ao salvar usuário. Verifique os dados e tente novamente.");
-        }
+      console.error("Erro ao salvar usuário:", error);
+      setError(error.response?.data?.message || "Erro ao salvar usuário. Verifique os dados e tente novamente.");
     }
-};
-
+  };
 
   const resetForm = () => {
     setFormData({
@@ -371,11 +380,22 @@ const handleChange = (e) => {
       modalidadePagamento: "",
       profissional: "",
       image: null,
+      procedimentos: []
     });
     setEditandoId(null);
     setModoVisualizacao(false);
     setError("");
     setFieldErrors({});
+    setShowProcedimentoForm(false);
+    setProcedimentoData({
+      dataProcedimento: "",
+      procedimento: "",
+      denteFace: "",
+      valor: "",
+      modalidadePagamento: "",
+      profissional: "",
+      observacoes: ""
+    });
   };
 
   const handleEdit = (usuario) => {
@@ -404,7 +424,9 @@ const handleChange = (e) => {
       cicatrizacao: usuario.exames?.cicatrizacao || "",
       procedimento: usuario.procedimento || "",
       denteFace: usuario.denteFace || "",
-      quaisMedicamentos: usuario.quaisMedicamentos || ""
+      quaisMedicamentos: usuario.quaisMedicamentos || "",
+      procedimentos: usuario.procedimentos?.sort((a, b) => 
+        new Date(b.dataProcedimento) - new Date(a.dataProcedimento)) || []
     });
   };
 
@@ -816,6 +838,92 @@ const handleChange = (e) => {
             />
           </div>
         </div>
+
+        {editandoId && (
+          <div className="form-section">
+            <h2>Histórico de Procedimentos</h2>
+            
+            <button 
+              type="button" 
+              onClick={() => setShowProcedimentoForm(!showProcedimentoForm)}
+              className="btn-add-procedimento"
+            >
+              {showProcedimentoForm ? 'Cancelar' : 'Adicionar Novo Procedimento'}
+            </button>
+
+            {showProcedimentoForm && (
+              <div className="procedimento-form">
+                <h3>Novo Procedimento</h3>
+                <div className="form-grid">
+                  {['dataProcedimento', 'procedimento', 'denteFace', 'valor', 'modalidadePagamento', 'profissional'].map((key) => (
+                    <div key={key} className="form-group">
+                      <label>{labels[key]}</label>
+                      {key === 'modalidadePagamento' ? (
+                        <select
+                          value={procedimentoData[key]}
+                          onChange={(e) => setProcedimentoData({...procedimentoData, [key]: e.target.value})}
+                        >
+                          <option value="">Selecione...</option>
+                          {modalidadesPagamento.map(opcao => (
+                            <option key={opcao} value={opcao}>{opcao}</option>
+                          ))}
+                        </select>
+                      ) : key === 'valor' ? (
+                        <input
+                          type="text"
+                          value={procedimentoData[key]}
+                          onChange={(e) => {
+                            const formattedValue = formatValor(e.target.value);
+                            setProcedimentoData({...procedimentoData, [key]: formattedValue});
+                          }}
+                        />
+                      ) : (
+                        <input
+                          type={key === 'dataProcedimento' ? 'date' : 'text'}
+                          value={procedimentoData[key]}
+                          onChange={(e) => setProcedimentoData({...procedimentoData, [key]: e.target.value})}
+                        />
+                      )}
+                    </div>
+                  ))}
+                  <div className="form-group full-width">
+                    <label>Observações</label>
+                    <textarea
+                      value={procedimentoData.observacoes}
+                      onChange={(e) => setProcedimentoData({...procedimentoData, observacoes: e.target.value})}
+                      rows={3}
+                    />
+                  </div>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={handleAddProcedimento}
+                  className="btn-confirm-procedimento"
+                >
+                  Confirmar Procedimento
+                </button>
+              </div>
+            )}
+
+            <div className="procedimentos-list">
+              {formData.procedimentos?.map((proc, index) => (
+                <div key={index} className="procedimento-item">
+                  <div className="procedimento-header">
+                    <h4>Procedimento #{formData.procedimentos.length - index}</h4>
+                    <span>{new Date(proc.dataProcedimento).toLocaleDateString('pt-BR')}</span>
+                  </div>
+                  <div className="procedimento-details">
+                    <p><strong>Procedimento:</strong> {proc.procedimento}</p>
+                    <p><strong>Dente/Face:</strong> {proc.denteFace}</p>
+                    <p><strong>Valor:</strong> {proc.valor.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</p>
+                    <p><strong>Profissional:</strong> {proc.profissional}</p>
+                    {proc.observacoes && <p><strong>Observações:</strong> {proc.observacoes}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <button type="submit" className="btn">
           <span className="btnText">{editandoId ? "Atualizar" : "Cadastrar"}</span>

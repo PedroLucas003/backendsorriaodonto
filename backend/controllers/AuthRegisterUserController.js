@@ -161,109 +161,104 @@ module.exports = class AuthRegisterUserController {
     const userData = req.body;
 
     try {
-      const existingUser = await User.findById(id);
-      if (!existingUser) {
-        return res.status(404).json({ message: "Usuário não encontrado." });
-      }
-
-      // VERIFICAÇÃO EXPLÍCITA DAS DATAS
-      // Se estiver atualizando dataProcedimento, verifica se não é anterior à dataNascimento
-      if (userData.dataProcedimento) {
-        const procDate = new Date(userData.dataProcedimento);
-        const birthDate = userData.dataNascimento 
-          ? new Date(userData.dataNascimento) 
-          : new Date(existingUser.dataNascimento);
-        
-        if (procDate < birthDate) {
-          return res.status(400).json({
-            error: true,
-            message: "Data do procedimento não pode ser antes da data de nascimento"
-          });
+        // Carregar o usuário existente
+        const existingUser = await User.findById(id);
+        if (!existingUser) {
+            return res.status(404).json({ message: "Usuário não encontrado." });
         }
-      }
-      // Se estiver atualizando dataNascimento, verifica se não é posterior à dataProcedimento
-      else if (userData.dataNascimento) {
-        const birthDate = new Date(userData.dataNascimento);
-        const procDate = new Date(existingUser.dataProcedimento);
-        
-        if (birthDate > procDate) {
-          return res.status(400).json({
-            error: true,
-            message: "Data de nascimento não pode ser depois da data do procedimento"
-          });
+
+        // Garantir que as datas sejam objetos Date e ignorem horas
+        const procDate = userData.dataProcedimento
+            ? new Date(userData.dataProcedimento).setHours(0, 0, 0, 0)
+            : null;
+        const birthDate = userData.dataNascimento
+            ? new Date(userData.dataNascimento).setHours(0, 0, 0, 0)
+            : new Date(existingUser.dataNascimento).setHours(0, 0, 0, 0);
+
+        // Validar data do procedimento
+        if (procDate && procDate < birthDate) {
+            return res.status(400).json({
+                error: true,
+                message: "Data do procedimento não pode ser antes da data de nascimento.",
+            });
         }
-      }
 
-      // Atualização de imagem
-      if (req.file) {
-        userData.image = req.file.filename;
-      } else {
-        userData.image = existingUser.image;
-      }
-
-      // Atualização de senha
-      if (!userData.password) {
-        userData.password = existingUser.password;
-      } else {
-        const salt = await bcrypt.genSalt(12);
-        userData.password = await bcrypt.hash(userData.password, salt);
-      }
-
-      // Atualização dos exames
-      if (userData.exameSangue || userData.coagulacao || userData.cicatrizacao) {
-        userData.exames = {
-          exameSangue: userData.exameSangue || existingUser.exames?.exameSangue,
-          coagulacao: userData.coagulacao || existingUser.exames?.coagulacao,
-          cicatrizacao: userData.cicatrizacao || existingUser.exames?.cicatrizacao
-        };
-      }
-
-      // Atualização dos hábitos
-      if (userData.frequenciaFumo || userData.frequenciaAlcool) {
-        userData.habitos = {
-          frequenciaFumo: userData.frequenciaFumo || existingUser.habitos?.frequenciaFumo,
-          frequenciaAlcool: userData.frequenciaAlcool || existingUser.habitos?.frequenciaAlcool
-        };
-      }
-
-      const updatedUser = await User.findByIdAndUpdate(
-        id, 
-        { $set: userData },
-        { 
-          new: true, 
-          runValidators: true,
-          context: 'query' // Isso ajuda na validação durante updates
+        // Validar data de nascimento
+        if (userData.dataNascimento) {
+            const existingProcDate = new Date(existingUser.dataProcedimento).setHours(0, 0, 0, 0);
+            if (birthDate > existingProcDate) {
+                return res.status(400).json({
+                    error: true,
+                    message: "Data de nascimento não pode ser depois da data do procedimento.",
+                });
+            }
         }
-      );
 
-      res.json({ 
-        message: "Usuário atualizado com sucesso!",
-        user: updatedUser 
-      });
+        // Atualizar imagem, se necessário
+        if (req.file) {
+            userData.image = req.file.filename;
+        } else {
+            userData.image = existingUser.image;
+        }
 
+        // Atualizar senha, se necessário
+        if (!userData.password) {
+            userData.password = existingUser.password;
+        } else {
+            const salt = await bcrypt.genSalt(12);
+            userData.password = await bcrypt.hash(userData.password, salt);
+        }
+
+        // Atualizar exames, se necessário
+        if (userData.exameSangue || userData.coagulacao || userData.cicatrizacao) {
+            userData.exames = {
+                exameSangue: userData.exameSangue || existingUser.exames?.exameSangue,
+                coagulacao: userData.coagulacao || existingUser.exames?.coagulacao,
+                cicatrizacao: userData.cicatrizacao || existingUser.exames?.cicatrizacao,
+            };
+        }
+
+        // Atualizar hábitos, se necessário
+        if (userData.frequenciaFumo || userData.frequenciaAlcool) {
+            userData.habitos = {
+                frequenciaFumo: userData.frequenciaFumo || existingUser.habitos?.frequenciaFumo,
+                frequenciaAlcool: userData.frequenciaAlcool || existingUser.habitos?.frequenciaAlcool,
+            };
+        }
+
+        // Atualizar o usuário no banco
+        const updatedUser = await User.findByIdAndUpdate(
+            id,
+            { $set: userData },
+            { new: true, runValidators: false } // Não usar validações automáticas do Mongoose
+        );
+
+        res.json({
+            message: "Usuário atualizado com sucesso!",
+            user: updatedUser,
+        });
     } catch (error) {
-      console.error(error);
-      
-      // Tratamento específico para erros de validação
-      if (error.name === 'ValidationError') {
-        const errors = {};
-        Object.keys(error.errors).forEach(key => {
-          errors[key] = error.errors[key].message;
+        console.error(error);
+
+        if (error.name === "ValidationError") {
+            const errors = {};
+            Object.keys(error.errors).forEach((key) => {
+                errors[key] = error.errors[key].message;
+            });
+            return res.status(400).json({
+                error: true,
+                message: "Erro de validação",
+                errors,
+            });
+        }
+
+        res.status(500).json({
+            error: true,
+            message: "Erro ao atualizar usuário.",
+            error: error.message,
         });
-        return res.status(400).json({
-          error: true,
-          message: "Erro de validação",
-          errors
-        });
-      }
-      
-      res.status(500).json({ 
-        error: true,
-        message: "Erro ao atualizar usuário.",
-        error: error.message 
-      });
     }
-  }
+}
 
   static async deleteUser(req, res) {
     const { id } = req.params;
@@ -385,6 +380,46 @@ module.exports = class AuthRegisterUserController {
       console.error("Erro ao buscar prontuário:", error);
       res.status(500).json({ 
         message: "Erro no servidor, tente novamente!",
+        error: error.message 
+      });
+    }
+  }
+  static async addProcedimento(req, res) {
+    const { id } = req.params;
+    const { dataProcedimento, denteFace, valor, modalidadePagamento, profissional } = req.body;
+  
+    try {
+      const user = await User.findByIdAndUpdate(
+        id,
+        { 
+          $push: { 
+            procedimentos: { 
+              dataProcedimento, 
+              denteFace, 
+              valor, 
+              modalidadePagamento, 
+              profissional 
+            } 
+          },
+          $set: { // Atualiza também os campos principais
+            dataProcedimento,
+            denteFace,
+            valor,
+            modalidadePagamento,
+            profissional
+          }
+        },
+        { new: true }
+      );
+  
+      res.json({
+        message: "Procedimento adicionado com sucesso!",
+        user
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        error: true,
+        message: "Erro ao adicionar procedimento",
         error: error.message 
       });
     }

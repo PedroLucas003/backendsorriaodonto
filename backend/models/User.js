@@ -1,5 +1,53 @@
 const mongoose = require("mongoose");
 
+// Schema para os procedimentos
+const ProcedimentoSchema = new mongoose.Schema({
+  dataProcedimento: { 
+    type: Date, 
+    required: [true, "A data do procedimento é obrigatória"],
+    validate: {
+      validator: function(v) {
+        return v >= new Date(this.parent().dataNascimento);
+      },
+      message: "Data do procedimento não pode ser antes da data de nascimento"
+    }
+  },
+  procedimento: {
+    type: String,
+    required: [true, "O procedimento é obrigatório"],
+    trim: true
+  },
+  denteFace: {
+    type: String,
+    required: [true, "Dente/Face é obrigatório"],
+    trim: true
+  },
+  profissional: { 
+    type: String, 
+    required: [true, "O profissional é obrigatório"],
+    trim: true
+  },
+  modalidadePagamento: { 
+    type: String, 
+    required: [true, "A modalidade de pagamento é obrigatória"],
+    enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto"]
+  },
+  valor: { 
+    type: Number, 
+    required: [true, "O valor é obrigatório"],
+    min: [0, "O valor não pode ser negativo"]
+  },
+  observacoes: {
+    type: String,
+    trim: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+    immutable: true
+  }
+}, { _id: true });
+
 const UserSchema = new mongoose.Schema({
   // Dados pessoais
   nomeCompleto: { 
@@ -128,7 +176,7 @@ const UserSchema = new mongoose.Schema({
     trim: true
   },
 
-  // Informações do procedimento (MODIFICADO - removido enum)
+  // Informações do procedimento principal
   procedimento: {
     type: String,
     required: [true, "O procedimento é obrigatório"],
@@ -158,9 +206,7 @@ const UserSchema = new mongoose.Schema({
     required: [true, "A data do procedimento é obrigatória"],
     validate: {
       validator: function(v) {
-        // Verifica se dataNascimento existe no documento atual ou nos dados sendo atualizados
-        const birthDate = this.dataNascimento || (this._update && this._update.$set && this._update.$set.dataNascimento);
-        return v >= new Date(birthDate);
+        return v >= new Date(this.dataNascimento);
       },
       message: "Data do procedimento não pode ser antes da data de nascimento"
     }
@@ -184,6 +230,9 @@ const UserSchema = new mongoose.Schema({
     trim: true
   },
 
+  // Histórico de procedimentos
+  historicoProcedimentos: [ProcedimentoSchema],
+
   // Controle de acesso
   role: { 
     type: String, 
@@ -197,12 +246,26 @@ const UserSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
+  toJSON: { 
+    virtuals: true,
+    transform: function(doc, ret) {
+      delete ret.password;
+      return ret;
+    }
+  },
+  toObject: { 
+    virtuals: true,
+    transform: function(doc, ret) {
+      delete ret.password;
+      return ret;
+    }
+  }
 });
 
 // Índices
 UserSchema.index({ cpf: 1, email: 1 });
+UserSchema.index({ "historicoProcedimentos.dataProcedimento": 1 });
+UserSchema.index({ "historicoProcedimentos.profissional": 1 });
 
 // Middleware para pré-processamento
 UserSchema.pre('save', function(next) {
@@ -216,9 +279,18 @@ UserSchema.pre('save', function(next) {
     this.cpf = this.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
   }
   
-  // Garantir que dataProcedimento não seja anterior à dataNascimento
+  // Validação de datas do procedimento principal
   if (this.isModified('dataProcedimento') && this.dataProcedimento < this.dataNascimento) {
-    throw new Error("Data do procedimento não pode ser antes da data de nascimento");
+    throw new Error("Data do procedimento principal não pode ser antes da data de nascimento");
+  }
+
+  // Validação dos procedimentos no histórico
+  if (this.isModified('historicoProcedimentos')) {
+    this.historicoProcedimentos.forEach(proc => {
+      if (new Date(proc.dataProcedimento) < new Date(this.dataNascimento)) {
+        throw new Error(`Data do procedimento no histórico (${proc.dataProcedimento}) não pode ser antes da data de nascimento`);
+      }
+    });
   }
   
   next();
@@ -237,6 +309,29 @@ UserSchema.virtual('idade').get(function() {
   const ageDate = new Date(diff);
   return Math.abs(ageDate.getUTCFullYear() - 1970);
 });
+
+// Virtual para o último procedimento
+UserSchema.virtual('ultimoProcedimento').get(function() {
+  if (this.historicoProcedimentos && this.historicoProcedimentos.length > 0) {
+    return this.historicoProcedimentos.reduce((latest, current) => 
+      new Date(current.dataProcedimento) > new Date(latest.dataProcedimento) ? current : latest
+    );
+  }
+  return null;
+});
+
+// Método para adicionar procedimento ao histórico
+UserSchema.methods.adicionarProcedimento = function(procedimentoData) {
+  this.historicoProcedimentos.push(procedimentoData);
+  // Atualiza também os campos principais com os dados mais recentes
+  this.procedimento = procedimentoData.procedimento;
+  this.denteFace = procedimentoData.denteFace;
+  this.dataProcedimento = procedimentoData.dataProcedimento;
+  this.profissional = procedimentoData.profissional;
+  this.modalidadePagamento = procedimentoData.modalidadePagamento;
+  this.valor = procedimentoData.valor;
+  return this.save();
+};
 
 const User = mongoose.model("User", UserSchema);
 

@@ -498,8 +498,18 @@ input[type="number"] {
   border: 1px solid #dee2e6;
 }
 
+
+
+
+
+
+
+
 .procedimentos-list {
   margin-top: 1.5rem;
+  max-height: 500px;
+  overflow-y: auto;
+  padding-right: 10px;
 }
 
 .procedimento-item {
@@ -507,8 +517,14 @@ input[type="number"] {
   margin-bottom: 1rem;
   background-color: #fff;
   border-radius: 8px;
-  border: 1px solid #dee2e6;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border-left: 4px solid #4a6cf7;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.procedimento-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
 
 .procedimento-header {
@@ -520,45 +536,183 @@ input[type="number"] {
   border-bottom: 1px solid #eee;
 }
 
+.procedimento-header h4 {
+  margin: 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.procedimento-header span {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.procedimento-details {
+  padding: 0.5rem 0;
+}
+
 .procedimento-details p {
   margin: 0.5rem 0;
   color: #555;
+  font-size: 0.95rem;
+  line-height: 1.4;
 }
 
+.procedimento-details strong {
+  color: #333;
+  font-weight: 600;
+}
+
+.no-procedimentos {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px dashed #ccc;
+}
+
+/* Formulário de procedimento */
+.procedimento-form {
+  margin: 1.5rem 0;
+  padding: 1.5rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.procedimento-form h3 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+/* Botões de procedimento */
 .btn-add-procedimento {
   background-color: #28a745;
   color: white;
-  padding: 0.5rem 1rem;
+  padding: 0.6rem 1.2rem;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 0.9rem;
-  transition: background-color 0.3s;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .btn-add-procedimento:hover {
   background-color: #218838;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 .btn-confirm-procedimento {
   background-color: #007bff;
   color: white;
-  padding: 0.5rem 1rem;
+  padding: 0.6rem 1.2rem;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 1rem;
+  font-weight: 500;
   margin-top: 1rem;
-  transition: background-color 0.3s;
+  transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .btn-confirm-procedimento:hover {
   background-color: #0069d9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Dark Mode para procedimentos */
+.dark-mode .procedimento-item {
+  background-color: #1e1e1e;
+  border-left-color: #4a6cf7;
+}
+
+.dark-mode .procedimento-header h4 {
+  color: #e0e0e0;
+}
+
+.dark-mode .procedimento-header span {
+  color: #aaa;
+}
+
+.dark-mode .procedimento-details p {
+  color: #ccc;
+}
+
+.dark-mode .procedimento-details strong {
+  color: #e0e0e0;
+}
+
+.dark-mode .no-procedimentos {
+  background-color: #2a2a2a;
+  color: #aaa;
+  border-color: #444;
+}
+
+.dark-mode .procedimento-form {
+  background-color: #2a2a2a;
+  border-color: #444;
+}
+
+.dark-mode .procedimento-form h3 {
+  color: #e0e0e0;
+}
+
+/* Barra de rolagem personalizada */
+.procedimentos-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.procedimentos-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.procedimentos-list::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 10px;
+}
+
+.procedimentos-list::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.dark-mode .procedimentos-list::-webkit-scrollbar-track {
+  background: #2a2a2a;
+}
+
+.dark-mode .procedimentos-list::-webkit-scrollbar-thumb {
+  background: #555;
+}
+
+.dark-mode .procedimentos-list::-webkit-scrollbar-thumb:hover {
+  background: #777;
 }
 
 /* Responsividade */
 @media (max-width: 768px) {
-  .procedimento-form .form-grid {
-    grid-template-columns: 1fr;
+  .procedimento-item {
+    padding: 1rem;
+  }
+  
+  .procedimento-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .procedimento-header span {
+    align-self: flex-end;
   }
 }

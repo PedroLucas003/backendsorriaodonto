@@ -386,42 +386,49 @@ module.exports = class AuthRegisterUserController {
   }
   static async addProcedimento(req, res) {
     const { id } = req.params;
-    const { dataProcedimento, denteFace, valor, modalidadePagamento, profissional } = req.body;
-  
-    try {
-      const user = await User.findByIdAndUpdate(
-        id,
-        { 
-          $push: { 
-            procedimentos: { 
-              dataProcedimento, 
-              denteFace, 
-              valor, 
-              modalidadePagamento, 
-              profissional 
-            } 
-          },
-          $set: { // Atualiza também os campos principais
-            dataProcedimento,
-            denteFace,
-            valor,
-            modalidadePagamento,
-            profissional
-          }
-        },
-        { new: true }
-      );
-  
-      res.json({
-        message: "Procedimento adicionado com sucesso!",
-        user
-      });
-    } catch (error) {
-      res.status(500).json({ 
-        error: true,
-        message: "Erro ao adicionar procedimento",
-        error: error.message 
-      });
+    const { 
+      dataProcedimento, 
+      procedimento, 
+      denteFace, 
+      valor, 
+      modalidadePagamento, 
+      profissional, 
+      observacoes 
+    } = req.body;
+
+    if (!dataProcedimento || !procedimento || !denteFace || !valor || !modalidadePagamento || !profissional) {
+        return res.status(422).json({ message: "Todos os campos obrigatórios devem ser preenchidos!" });
     }
-  }
+
+    try {
+        const novoProcedimento = {
+            dataProcedimento: new Date(dataProcedimento),
+            procedimento,
+            denteFace,
+            valor: parseFloat(valor.replace(/[^\d,]/g, '').replace(',', '.')),
+            modalidadePagamento,
+            profissional,
+            observacoes: observacoes || "",
+            createdAt: new Date()
+        };
+
+        const usuarioAtualizado = await User.findByIdAndUpdate(
+            id,
+            { $push: { historicoProcedimentos: novoProcedimento } },
+            { new: true, runValidators: true }
+        );
+
+        if (!usuarioAtualizado) {
+            return res.status(404).json({ message: "Usuário não encontrado!" });
+        }
+
+        res.status(200).json({
+            message: "Procedimento adicionado com sucesso!",
+            user: usuarioAtualizado
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Erro ao adicionar procedimento", error: error.message });
+    }
+}
 };

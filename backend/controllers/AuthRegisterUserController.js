@@ -344,7 +344,21 @@ module.exports = class AuthRegisterUserController {
         return res.status(401).json({ message: "Senha incorreta!" });
       }
   
-      // Retorna os dados formatados com os novos campos
+      // Criar array de procedimentos combinando o principal e o histórico
+      const todosProcedimentos = [
+        {
+          dataProcedimento: user.dataProcedimento,
+          procedimento: user.procedimento,
+          denteFace: user.denteFace,
+          valor: user.valor,
+          modalidadePagamento: user.modalidadePagamento,
+          profissional: user.profissional,
+          isPrincipal: true
+        },
+        ...(user.historicoProcedimentos || []).map(p => ({ ...p.toObject(), isPrincipal: false }))
+      ].sort((a, b) => new Date(b.dataProcedimento) - new Date(a.dataProcedimento));
+  
+      // Retorna os dados formatados
       const prontuario = {
         nomeCompleto: user.nomeCompleto,
         email: user.email,
@@ -366,12 +380,7 @@ module.exports = class AuthRegisterUserController {
         sangramentoPosProcedimento: user.sangramentoPosProcedimento,
         respiracao: user.respiracao,
         peso: user.peso,
-        procedimento: user.procedimento,
-        denteFace: user.denteFace,
-        profissional: user.profissional,
-        dataProcedimento: user.dataProcedimento,
-        modalidadePagamento: user.modalidadePagamento,
-        valor: user.valor,
+        procedimentos: todosProcedimentos,
         image: user.image
       };
   
@@ -384,6 +393,7 @@ module.exports = class AuthRegisterUserController {
       });
     }
   }
+
   static async addProcedimento(req, res) {
     const { id } = req.params;
     const { 
@@ -392,43 +402,67 @@ module.exports = class AuthRegisterUserController {
       denteFace, 
       valor, 
       modalidadePagamento, 
-      profissional, 
-      observacoes 
+      profissional
     } = req.body;
-
+  
     if (!dataProcedimento || !procedimento || !denteFace || !valor || !modalidadePagamento || !profissional) {
-        return res.status(422).json({ message: "Todos os campos obrigatórios devem ser preenchidos!" });
+      return res.status(422).json({ message: "Todos os campos obrigatórios devem ser preenchidos!" });
     }
-
+  
     try {
-        const novoProcedimento = {
-            dataProcedimento: new Date(dataProcedimento),
-            procedimento,
-            denteFace,
-            valor: parseFloat(valor.replace(/[^\d,]/g, '').replace(',', '.')),
-            modalidadePagamento,
-            profissional,
-            observacoes: observacoes || "",
-            createdAt: new Date()
-        };
-
-        const usuarioAtualizado = await User.findByIdAndUpdate(
-            id,
-            { $push: { historicoProcedimentos: novoProcedimento } },
-            { new: true, runValidators: true }
-        );
-
-        if (!usuarioAtualizado) {
-            return res.status(404).json({ message: "Usuário não encontrado!" });
-        }
-
-        res.status(200).json({
-            message: "Procedimento adicionado com sucesso!",
-            user: usuarioAtualizado
+      // Busca o usuário completo para validação
+      const user = await User.findById(id);
+      if (!user) {
+        return res.status(404).json({ message: "Usuário não encontrado!" });
+      }
+  
+      // Validação manual da data
+      const procDate = new Date(dataProcedimento);
+      const birthDate = new Date(user.dataNascimento);
+      
+      if (procDate < birthDate) {
+        return res.status(400).json({
+          message: "Data do procedimento não pode ser antes da data de nascimento"
         });
+      }
+  
+      // Formata o valor
+      const valorNumerico = parseFloat(
+        String(valor).replace(/[^\d,]/g, '').replace(',', '.')
+      );
+  
+      if (isNaN(valorNumerico)) {
+        return res.status(400).json({ message: "Valor inválido" });
+      }
+  
+      const novoProcedimento = {
+        dataProcedimento: procDate,
+        procedimento: procedimento.trim(),
+        denteFace: denteFace.trim(),
+        valor: valorNumerico,
+        modalidadePagamento,
+        profissional: profissional.trim(),
+        createdAt: new Date()
+      };
+  
+      // Atualiza apenas o histórico
+      const usuarioAtualizado = await User.findByIdAndUpdate(
+        id,
+        { $push: { historicoProcedimentos: novoProcedimento } },
+        { new: true }
+      );
+  
+      res.status(201).json({
+        message: "Procedimento adicionado com sucesso!",
+        user: usuarioAtualizado
+      });
+  
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Erro ao adicionar procedimento", error: error.message });
+      console.error("Erro ao adicionar procedimento:", error);
+      res.status(500).json({ 
+        message: "Erro ao adicionar procedimento",
+        error: error.message 
+      });
     }
-}
+  }
 };

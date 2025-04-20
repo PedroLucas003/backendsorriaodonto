@@ -6,10 +6,12 @@ const ProcedimentoSchema = new mongoose.Schema({
     type: Date, 
     required: [true, "A data do procedimento é obrigatória"],
     validate: {
-      validator: function(v) {
-        return v >= new Date(this.parent().dataNascimento);
+      validator: function(value) {
+        if (!this.parent()) return true;
+        if (!this.parent().dataNascimento) return true;
+        return value > this.parent().dataNascimento;
       },
-      message: "Data do procedimento não pode ser antes da data de nascimento"
+      message: 'Data do procedimento deve ser após a data de nascimento'
     }
   },
   procedimento: {
@@ -36,10 +38,6 @@ const ProcedimentoSchema = new mongoose.Schema({
     type: Number, 
     required: [true, "O valor é obrigatório"],
     min: [0, "O valor não pode ser negativo"]
-  },
-  observacoes: {
-    type: String,
-    trim: true
   },
   createdAt: {
     type: Date,
@@ -205,10 +203,11 @@ const UserSchema = new mongoose.Schema({
     type: Date, 
     required: [true, "A data do procedimento é obrigatória"],
     validate: {
-      validator: function(v) {
-        return v >= new Date(this.dataNascimento);
+      validator: function(value) {
+        if (!this.dataNascimento) return true;
+        return value > this.dataNascimento;
       },
-      message: "Data do procedimento não pode ser antes da data de nascimento"
+      message: 'Data do procedimento principal deve ser após a data de nascimento'
     }
   },
   modalidadePagamento: { 
@@ -267,7 +266,7 @@ UserSchema.index({ cpf: 1, email: 1 });
 UserSchema.index({ "historicoProcedimentos.dataProcedimento": 1 });
 UserSchema.index({ "historicoProcedimentos.profissional": 1 });
 
-// Middleware para pré-processamento
+// Middleware para pré-processamento e validação
 UserSchema.pre('save', function(next) {
   // Formatação do nome
   if (this.isModified('nomeCompleto')) {
@@ -280,12 +279,12 @@ UserSchema.pre('save', function(next) {
   }
   
   // Validação de datas do procedimento principal
-  if (this.isModified('dataProcedimento') && this.dataProcedimento < this.dataNascimento) {
+  if (this.isModified('dataProcedimento') && this.dataNascimento && this.dataProcedimento < this.dataNascimento) {
     throw new Error("Data do procedimento principal não pode ser antes da data de nascimento");
   }
 
   // Validação dos procedimentos no histórico
-  if (this.isModified('historicoProcedimentos')) {
+  if (this.isModified('historicoProcedimentos') && this.dataNascimento) {
     this.historicoProcedimentos.forEach(proc => {
       if (new Date(proc.dataProcedimento) < new Date(this.dataNascimento)) {
         throw new Error(`Data do procedimento no histórico (${proc.dataProcedimento}) não pode ser antes da data de nascimento`);
@@ -305,6 +304,7 @@ UserSchema.virtual('nomeFormatado').get(function() {
 
 // Virtual para idade
 UserSchema.virtual('idade').get(function() {
+  if (!this.dataNascimento) return null;
   const diff = Date.now() - this.dataNascimento.getTime();
   const ageDate = new Date(diff);
   return Math.abs(ageDate.getUTCFullYear() - 1970);
@@ -323,13 +323,6 @@ UserSchema.virtual('ultimoProcedimento').get(function() {
 // Método para adicionar procedimento ao histórico
 UserSchema.methods.adicionarProcedimento = function(procedimentoData) {
   this.historicoProcedimentos.push(procedimentoData);
-  // Atualiza também os campos principais com os dados mais recentes
-  this.procedimento = procedimentoData.procedimento;
-  this.denteFace = procedimentoData.denteFace;
-  this.dataProcedimento = procedimentoData.dataProcedimento;
-  this.profissional = procedimentoData.profissional;
-  this.modalidadePagamento = procedimentoData.modalidadePagamento;
-  this.valor = procedimentoData.valor;
   return this.save();
 };
 

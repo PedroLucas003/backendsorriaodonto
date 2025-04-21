@@ -114,7 +114,7 @@ const RegisterUser = () => {
 
   const handleProcedimentoChange = (e) => {
     const { name, value } = e.target;
-    
+
     if (name === "valor") {
       const cleanedValue = value.replace(/\D/g, "");
       const numericValue = parseFloat(cleanedValue) / 100;
@@ -122,7 +122,7 @@ const RegisterUser = () => {
         style: "currency",
         currency: "BRL",
       });
-      
+
       setProcedimentoData(prev => ({
         ...prev,
         [name]: isNaN(numericValue) ? "" : formattedValue
@@ -283,7 +283,7 @@ const RegisterUser = () => {
   const handleAddProcedimento = async (e) => {
     e.preventDefault();
   
-    // Validação básica dos campos
+    // Validação básica dos campos (mantido igual)
     const requiredFields = {
       dataProcedimento: "A data do procedimento é obrigatória",
       procedimento: "O procedimento é obrigatório",
@@ -310,8 +310,8 @@ const RegisterUser = () => {
   
     try {
       const token = localStorage.getItem("token");
-      
-      // Formata os dados para envio
+  
+      // Formata os dados para envio (mantido igual)
       const dadosParaEnvio = {
         dataProcedimento: procedimentoData.dataProcedimento,
         procedimento: procedimentoData.procedimento,
@@ -321,6 +321,7 @@ const RegisterUser = () => {
         profissional: procedimentoData.profissional
       };
   
+      // Chamada à API (mantida igual)
       const response = await api.put(
         `/auth/users/${editandoId}/procedimento`,
         dadosParaEnvio,
@@ -332,7 +333,7 @@ const RegisterUser = () => {
         }
       );
   
-      // Atualiza o estado sem modificar os campos principais
+      // Mantendo EXATAMENTE sua lógica original de atualização do estado
       setFormData(prev => {
         const novoProcedimento = {
           ...response.data.user.historicoProcedimentos.slice(-1)[0], // Pega o último procedimento
@@ -357,7 +358,7 @@ const RegisterUser = () => {
         };
       });
   
-      // Reseta o formulário
+      // Reseta o formulário (mantido igual)
       setShowProcedimentoForm(false);
       setProcedimentoData({
         dataProcedimento: "",
@@ -368,34 +369,38 @@ const RegisterUser = () => {
         profissional: ""
       });
       setError("");
-      
+  
     } catch (error) {
       console.error("Erro ao adicionar procedimento:", error);
       setError(error.response?.data?.message || "Erro ao adicionar procedimento");
     }
   };
-  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     if (!validateForm()) return;
-
+  
     const token = localStorage.getItem("token");
     const formDataToSend = new FormData();
-
+  
+    // Lista de campos que não devem ser enviados
+    const camposNaoEnviar = ['procedimentos'];
+  
     Object.keys(formData).forEach((key) => {
+      if (camposNaoEnviar.includes(key)) return;
+      
       if (key === "image") {
         if (formData[key]) formDataToSend.append(key, formData[key]);
       } else {
         let value = formData[key];
-
+  
         if (key === "cpf" || key === "telefone") {
           value = String(value).replace(/\D/g, "");
         } else if (key === "valor") {
           value = String(value).replace(/[^\d,]/g, "").replace(",", ".");
         }
-
+  
         if (
           (key === "password" || key === "confirmPassword") &&
           !value &&
@@ -403,13 +408,13 @@ const RegisterUser = () => {
         ) {
           return;
         }
-
+  
         if (value !== null && value !== undefined) {
           formDataToSend.append(key, value);
         }
       }
     });
-
+  
     try {
       if (editandoId) {
         const response = await api.put(
@@ -434,7 +439,7 @@ const RegisterUser = () => {
         });
         alert("Usuário cadastrado com sucesso!");
       }
-
+  
       resetForm();
       fetchUsuarios();
     } catch (error) {
@@ -493,50 +498,51 @@ const RegisterUser = () => {
       profissional: ""
     });
   };
-  const handleEdit = (usuario) => {
-    setEditandoId(usuario._id);
-    setModoVisualizacao(true);
 
-    const formatDate = (dateString) => {
-      if (!dateString) return "";
-      const date = new Date(dateString);
-      return isNaN(date.getTime()) ? "" : date.toISOString().split("T")[0];
-    };
+ const handleEdit = (usuario) => {
+  setEditandoId(usuario._id);
+  setModoVisualizacao(true);
 
-    // Criar array de procedimentos combinando o principal e o histórico
-    const procedimentosCompletos = [
-      {
-        dataProcedimento: usuario.dataProcedimento,
-        procedimento: usuario.procedimento,
-        denteFace: usuario.denteFace,
-        valor: usuario.valor,
-        modalidadePagamento: usuario.modalidadePagamento,
-        profissional: usuario.profissional,
-        isPrincipal: true
-      },
-      ...(usuario.historicoProcedimentos || []).map(p => ({ ...p, isPrincipal: false }))
-    ].sort((a, b) => new Date(b.dataProcedimento) - new Date(a.dataProcedimento));
-
-    setFormData({
-      ...usuario,
-      cpf: formatCPF(usuario.cpf),
-      telefone: formatFone(usuario.telefone),
-      dataNascimento: formatDate(usuario.dataNascimento),
-      dataProcedimento: formatDate(usuario.dataProcedimento),
-      password: "",
-      confirmPassword: "",
-      image: null,
-      historicoCirurgia: usuario.historicoCirurgia || "",
-      historicoOdontologico: usuario.historicoOdontologico || "",
-      exameSangue: usuario.exames?.exameSangue || "",
-      coagulacao: usuario.exames?.coagulacao || "",
-      cicatrizacao: usuario.exames?.cicatrizacao || "",
-      procedimento: usuario.procedimento || "",
-      denteFace: usuario.denteFace || "",
-      quaisMedicamentos: usuario.quaisMedicamentos || "",
-      procedimentos: procedimentosCompletos
-    });
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? "" : date.toISOString().split("T")[0];
   };
+
+  // Criar array de procedimentos combinando o principal e o histórico
+  const procedimentosCompletos = [
+    {
+      dataProcedimento: usuario.dataProcedimento,
+      procedimento: usuario.procedimento,
+      denteFace: usuario.denteFace,
+      valor: usuario.valor,
+      modalidadePagamento: usuario.modalidadePagamento,
+      profissional: usuario.profissional,
+      isPrincipal: true
+    },
+    ...(usuario.historicoProcedimentos || []).map(p => ({ ...p, isPrincipal: false }))
+  ].sort((a, b) => new Date(b.dataProcedimento) - new Date(a.dataProcedimento));
+
+  setFormData({
+    ...usuario,
+    cpf: formatCPF(usuario.cpf),
+    telefone: formatFone(usuario.telefone),
+    dataNascimento: formatDate(usuario.dataNascimento),
+    dataProcedimento: formatDate(usuario.dataProcedimento),
+    password: "",
+    confirmPassword: "",
+    image: null,
+    historicoCirurgia: usuario.historicoCirurgia || "",
+    historicoOdontologico: usuario.historicoOdontologico || "",
+    exameSangue: usuario.exames?.exameSangue || "",
+    coagulacao: usuario.exames?.coagulacao || "",
+    cicatrizacao: usuario.exames?.cicatrizacao || "",
+    procedimento: usuario.procedimento || "",
+    denteFace: usuario.denteFace || "",
+    quaisMedicamentos: usuario.quaisMedicamentos || "",
+    procedimentos: procedimentosCompletos
+  });
+};
 
   const handleVoltar = () => {
     setEditandoId(null);
@@ -579,6 +585,8 @@ const RegisterUser = () => {
       usuario.cpf.includes(searchTerm.replace(/\D/g, ""))
     );
   });
+
+
 
   const labels = {
     nomeCompleto: "Nome completo *",
@@ -962,7 +970,7 @@ const RegisterUser = () => {
             {showProcedimentoForm && (
               <div className="procedimento-form">
                 <h3>Adicionar Novo Procedimento</h3>
-                
+
                 <div className="form-grid">
                   <div className="form-group">
                     <label htmlFor="dataProcedimento">Data *</label>
@@ -1069,7 +1077,7 @@ const RegisterUser = () => {
                   >
                     Cancelar
                   </button>
-                  
+
                   <button
                     type="button"
                     onClick={handleAddProcedimento}
@@ -1144,6 +1152,9 @@ const RegisterUser = () => {
           <span className="btnText">{editandoId ? "Atualizar" : "Cadastrar"}</span>
           <i className="bi bi-cloud-upload"></i>
         </button>
+
+
+
       </form>
 
       {!modoVisualizacao && (

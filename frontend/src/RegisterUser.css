@@ -137,14 +137,13 @@ textarea:hover {
 
 textarea {
   resize: vertical;
-  min-height: 60px; /* Reduzido de 100px */
+  min-height: 60px;
 }
 
 .large-text-area {
   min-height: 120px;
 }
 
-/* Campos médios (para histórico odontológico e exame de sangue) */
 .medium-text-area {
   min-height: 100px;
 }
@@ -354,7 +353,6 @@ th {
   border-color: #ff6666;
 }
 
-/* Estilo específico para campo de peso */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
@@ -432,7 +430,6 @@ input[type="number"] {
   font-family: inherit;
 }
 
-/* Mantenha o estilo dos outros campos */
 .form-group textarea {
   width: 100%;
   padding: 8px;
@@ -470,12 +467,10 @@ input[type="number"] {
   box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* Ícone da seta (se estiver usando ícones) */
 .btn-voltar i {
   font-size: 18px;
 }
 
-/* Se estiver usando SVG ou outro elemento para a seta */
 .btn-voltar svg {
   width: 16px;
   height: 16px;
@@ -497,13 +492,6 @@ input[type="number"] {
   border-radius: 8px;
   border: 1px solid #dee2e6;
 }
-
-
-
-
-
-
-
 
 .procedimentos-list {
   margin-top: 1.5rem;

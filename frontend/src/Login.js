@@ -29,7 +29,8 @@ const Login = () => {
       });
 
       const token = response.data.token;
-      localStorage.setItem("token", token);
+      // Substitua por:
+      localStorage.setItem("token", token, { secure: true, sameSite: 'strict' });
 
       navigate("/register");
     } catch (error) {

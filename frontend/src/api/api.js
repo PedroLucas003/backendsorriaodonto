@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: window.location.hostname === "localhost"
+  baseURL: process.env.NODE_ENV === 'development'
     ? "http://localhost:3000"
     : "https://sorriaodontofn.com",
 });

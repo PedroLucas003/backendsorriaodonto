@@ -2,6 +2,7 @@ const router = require("express").Router();
 const multer = require("multer");
 const path = require("path");
 const verifyToken = require("../auth");
+const mongoose = require('mongoose');
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -14,12 +15,14 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  fileFilter(req, file, cb) {
-    if (!file.originalname.match(/\.(png|jpg|JPEG|PNG)$/)) {
-      return cb(new Error("É permitido somente o envio de jpg ou png!"));
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+  fileFilter: (req, file, cb) => {
+    const mimeType = file.mimetype;
+    if (!mimeType.includes('image')) {
+      return cb(new Error("Apenas imagens são permitidas!"));
     }
     cb(null, true);
-  },
+  }
 });
 
 const AuthRegisterUserController = require("../controllers/AuthRegisterUserController");
@@ -45,8 +48,6 @@ router.put("/auth/users/:id", verifyToken, upload.single("image"), AuthRegisterU
 // Deletar usuário (protegida)
 router.delete("/auth/users/:id", verifyToken, AuthRegisterUserController.deleteUser);
 
-//Autorizar o acesso do usuario
-// router.post('/auth/autorizar', verifyToken, AuthRegisterUserController.autorizarUsuario);
 
 // Atualizar procedimento (protegida)
 router.put('/auth/users/:id/procedimento', verifyToken, AuthRegisterUserController.addProcedimento);

@@ -4,8 +4,8 @@ const dbUser = process.env.DB_USER;
 const dbPassword = process.env.DB_PASS;
 
 const connect = () => {
-    mongoose.connect(`mongodb+srv://${dbUser}:${dbPassword}@sorriaodonto.fxrtx.mongodb.net/sorriaodonto?retryWrites=true&w=majority&appName=SorriaOdonto`)
-
+// database/connection.js
+mongoose.connect(process.env.DB_FULL_URI || "mongodb://localhost:27017/dev");
 
     const connection = mongoose.connection;
 

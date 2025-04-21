@@ -3,21 +3,12 @@ const mongoose = require("mongoose");
 // Schema para os procedimentos
 const ProcedimentoSchema = new mongoose.Schema({
   dataProcedimento: { 
-    type: Date, 
-    required: [true, "A data do procedimento é obrigatória"],
-    validate: {
-      validator: function(value) {
-        if (!this.parent()) return true;
-        if (!this.parent().dataNascimento) return true;
-        return value > this.parent().dataNascimento;
-      },
-      message: 'Data do procedimento deve ser após a data de nascimento'
-    }
+    type: Date,
+    required: true
   },
   procedimento: {
     type: String,
-    required: [true, "O procedimento é obrigatório"],
-    trim: true
+    required: true
   },
   denteFace: {
     type: String,
@@ -44,7 +35,12 @@ const ProcedimentoSchema = new mongoose.Schema({
     default: Date.now,
     immutable: true
   }
-}, { _id: true });
+}, { 
+  _id: true, // Isso é essencial
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
 
 const UserSchema = new mongoose.Schema({
   // Dados pessoais
@@ -230,7 +226,10 @@ const UserSchema = new mongoose.Schema({
   },
 
   // Histórico de procedimentos
-  historicoProcedimentos: [ProcedimentoSchema],
+  historicoProcedimentos: {
+    type: [ProcedimentoSchema],
+    default: []
+  },
 
   // Controle de acesso
   role: { 

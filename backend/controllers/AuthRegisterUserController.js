@@ -6,6 +6,73 @@ module.exports = class AuthRegisterUserController {
   static async init(req, res) {
     res.send({ message: "Bem-vindo à nossa API!" });
   }
+  
+  static async healthCheck(req, res) {
+    const checks = {
+      database: {
+        status: 'OK',
+        latency: 0,
+        details: {}
+      },
+      memory: {
+        status: 'OK',
+        details: {}
+      },
+      disk: {
+        status: 'OK',
+        details: {}
+      }
+    };
+  
+    try {
+      // Teste de conexão com MongoDB
+      const dbStart = Date.now();
+      await mongoose.connection.db.admin().ping();
+      checks.database.latency = Date.now() - dbStart;
+      checks.database.details.connectionState = mongoose.connection.readyState;
+  
+      // Verificação de memória
+      const memoryUsage = process.memoryUsage();
+      checks.memory.details = {
+        rss: `${(memoryUsage.rss / 1024 / 1024).toFixed(2)} MB`,
+        heapTotal: `${(memoryUsage.heapTotal / 1024 / 1024).toFixed(2)} MB`,
+        heapUsed: `${(memoryUsage.heapUsed / 1024 / 1024).toFixed(2)} MB`,
+        external: `${(memoryUsage.external / 1024 / 1024).toFixed(2)} MB`
+      };
+  
+      // Verificação de espaço em disco (exemplo para Linux)
+      if (process.platform === 'linux') {
+        const checkDiskSpace = require('check-disk-space').default;
+        const disk = await checkDiskSpace('/');
+        checks.disk.details = {
+          free: `${(disk.free / 1024 / 1024 / 1024).toFixed(2)} GB`,
+          size: `${(disk.size / 1024 / 1024 / 1024).toFixed(2)} GB`
+        };
+      }
+  
+      // Status geral
+      const allOk = Object.values(checks).every(c => c.status === 'OK');
+      res.status(allOk ? 200 : 503).json({
+        status: allOk ? 'UP' : 'PARTIAL',
+        checks,
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString(),
+        version: require('../package.json').version // Adicione sua versão
+      });
+  
+    } catch (error) {
+      checks.database.status = 'ERROR';
+      checks.database.details.error = error.message;
+      
+      res.status(503).json({
+        status: 'DOWN',
+        checks,
+        error: "Service Unavailable",
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
 
   static async registerUser(req, res) {
     const {
@@ -282,48 +349,61 @@ module.exports = class AuthRegisterUserController {
 
   static async loginUser(req, res) {
     const { cpf, password } = req.body;
-  
+    
     if (!cpf || !password) {
-      return res.status(422).json({ message: "CPF e senha são obrigatórios!" });
+        return res.status(422).json({ message: "CPF e senha são obrigatórios!" });
     }
-  
-    try {
-      const cpfLimpo = cpf.replace(/\D/g, '');
-  
-      const user = await User.findOne({ cpf: cpfLimpo }).select('+password');
-  
-      if (!user) {
-        return res.status(403).json({ message: "Acesso não autorizado ou usuário não encontrado" });
-      }
-  
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      if (!isPasswordValid) {
-        return res.status(401).json({ message: "Senha incorreta!" });
-      }
-  
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "1h"
-      });
-  
-      res.status(200).json({
-        token,
-        user: {
-          id: user._id,
-          nomeCompleto: user.nomeCompleto,
-          email: user.email,
-          role: user.role
-        }
-      });
-  
-    } catch (error) {
-      console.error("Erro no login:", error);
-      res.status(500).json({ 
-        message: "Erro no servidor, tente novamente!",
-        error: error.message 
-      });
-    }
-  }
 
+    const cpfLimpo = cpf.replace(/\D/g, '');
+
+    try {
+        // Busca TODOS os usuários (para debug - remova depois)
+        const allUsers = await User.find({});
+
+        // Busca o usuário pelo CPF (formatado ou não)
+        const user = await User.findOne({ 
+            $or: [
+                { cpf: cpfLimpo },
+                { cpf: cpfLimpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") }
+            ]
+        }).select('+password');
+        
+        if (!user) {
+            console.log("Usuário não encontrado para o CPF:", cpfLimpo);
+            return res.status(403).json({ message: "Acesso não autorizado: usuário não encontrado." });
+        }
+
+        // Verifica a senha
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({ message: "Senha incorreta!" });
+        }
+
+        // Gera o token
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+            expiresIn: "1h"
+        });
+
+        res.status(200).json({
+            token,
+            user: {
+                id: user._id,
+                nomeCompleto: user.nomeCompleto,
+                email: user.email,
+                role: user.role
+            }
+        });
+
+    } catch (error) {
+        console.error("Erro completo:", error);
+        res.status(500).json({
+            message: "Erro no servidor, tente novamente!",
+            error: error.message
+        });
+    }
+}
+
+  
   static async getProntuario(req, res) {
     const { cpf, password } = req.body;
   

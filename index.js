@@ -16,10 +16,17 @@ app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
 // Configuração CORS (CORREÇÃO APLICADA)
 const allowedOrigins = [
-  process.env.FRONTEND_URL || 'https://soofront.vercel.app',
+  'https://frontvercel.vercel.app', // URL do seu frontend
   'https://sorriaodontofn.com',
   'http://localhost:3000'
-].filter(Boolean);
+];
+
+app.use(cors({
+  origin: allowedOrigins,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 
 const corsOptions = {
   origin: function (origin, callback) {

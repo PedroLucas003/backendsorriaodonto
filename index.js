@@ -113,7 +113,7 @@ app.get('/', (req, res) => {
     service: 'Sorria Odonto Backend',
     version: '1.0.0',
     environment: process.env.NODE_ENV,
-    apiBaseUrl: '/api', // Adicionei para maior clareza
+    apiBaseUrl: '/api',
     documentation: {
       auth: {
         login: 'POST /api/login',

@@ -2,20 +2,30 @@ const router = require("express").Router();
 const verifyToken = require("../auth");
 const AuthRegisterUserController = require("../controllers/AuthRegisterUserController");
 
-// Rota inicial de teste
-router.get("/", (req, res) => {
-  res.json({ message: "API Sorria Odonto funcionando!" });
+// ======================
+// Rotas Públicas
+// ======================
+router.post("/register/user", AuthRegisterUserController.registerUser);
+router.post("/login", AuthRegisterUserController.loginUser);
+router.post("/prontuario", AuthRegisterUserController.getProntuario);
+
+// ======================
+// Rotas Protegidas
+// ======================
+router.get("/users", verifyToken, AuthRegisterUserController.getAllUsers);
+router.put("/users/:id", verifyToken, AuthRegisterUserController.updateUser);
+router.delete("/users/:id", verifyToken, AuthRegisterUserController.deleteUser);
+router.put('/users/:id/procedimento', verifyToken, AuthRegisterUserController.addProcedimento);
+
+// ======================
+// Rota de Teste (opcional)
+// ======================
+router.get("/status", (req, res) => {
+  res.json({ 
+    status: "active",
+    service: "Auth API",
+    version: "1.0.0"
+  });
 });
-
-// Rotas públicas
-router.post("/auth/register/user", AuthRegisterUserController.registerUser);
-router.post("/auth/login", AuthRegisterUserController.loginUser);
-router.post("/auth/prontuario", AuthRegisterUserController.getProntuario);
-
-// Rotas protegidas por token
-router.get("/auth/users", verifyToken, AuthRegisterUserController.getAllUsers);
-router.put("/auth/users/:id", verifyToken, AuthRegisterUserController.updateUser);
-router.delete("/auth/users/:id", verifyToken, AuthRegisterUserController.deleteUser);
-router.put('/auth/users/:id/procedimento', verifyToken, AuthRegisterUserController.addProcedimento);
 
 module.exports = router;

@@ -107,11 +107,25 @@ app.get('/', (req, res) => {
 });
 
 // Health Check Endpoint
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'healthy',
-    database: 'connected', // You might want to add actual DB ping check
-    uptime: process.uptime(),
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'online',
+    service: 'Sorria Odonto Backend',
+    version: '1.0.0',
+    environment: process.env.NODE_ENV,
+    documentation: {
+      auth: {
+        login: 'POST /api/login',
+        register: 'POST /api/register/user',
+        prontuario: 'POST /api/prontuario'
+      },
+      users: {
+        getAll: 'GET /api/users',
+        update: 'PUT /api/users/:id',
+        delete: 'DELETE /api/users/:id',
+        addProcedure: 'PUT /api/users/:id/procedimento'
+      }
+    },
     timestamp: new Date().toISOString()
   });
 });

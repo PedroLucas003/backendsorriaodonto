@@ -1,187 +1,91 @@
 require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 
-// Debug: Enhanced environment logging
-console.log('=== Starting Server ===');
-console.log('Environment:', {
-  NODE_ENV: process.env.NODE_ENV,
-  PORT: process.env.PORT,
-  FRONTEND_URL: process.env.FRONTEND_URL,
-  DB_CONNECTED: !!process.env.DB_FULL_URI,
-  JWT_SECRET: process.env.JWT_SECRET ? '***' : 'missing'
-});
+// Debug: Log de inicialização
+console.log('=== Iniciando Servidor ===');
 
 const app = express();
 
-// ====================
-// Security Middlewares
-// ====================
+// Middlewares de Segurança
 app.use(helmet());
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-// ================
-// CORS Configuration
-// ================
+// Configuração CORS (CORREÇÃO APLICADA)
 const allowedOrigins = [
   process.env.FRONTEND_URL || 'https://soofront.vercel.app',
   'https://sorriaodontofn.com',
-  'http://localhost:3000' // For local development
+  'http://localhost:3000'
 ].filter(Boolean);
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.some(allowedOrigin => 
-      origin === allowedOrigin || 
-      origin.includes(allowedOrigin.replace(/https?:\/\//, ''))
-    )) {
+    const originMatches = allowedOrigins.some(allowedOrigin => {
+      return origin === allowedOrigin || 
+             origin.includes(allowedOrigin.replace(/https?:\/\//, ''));
+    });
+    
+    if (originMatches) {
       callback(null, true);
     } else {
-      console.warn(`CORS blocked for origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+      console.warn(`CORS bloqueado para origem: ${origin}`);
+      callback(new Error('Não permitido por CORS'));
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  credentials: true,
-  maxAge: 86400
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 };
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
-// ================
 // Rate Limiting
-// ================
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: (req) => process.env.NODE_ENV === 'development' // Disable in dev
+  standardHeaders: true
 });
-
 app.use(limiter);
 
-// ================
-// Database Connection
-// ================
+// Conexão com Banco de Dados
 require("./database/connection");
 
-// ================
-// Routes
-// ================
+// Rotas
 const AuthRegisterUserRoutes = require("./routes/AuthRegisterUserRoutes");
 app.use('/api', AuthRegisterUserRoutes);
 
-// ================
-// API Documentation Endpoint
-// ================
+// Documentação da API
 app.get('/', (req, res) => {
   res.status(200).json({
     status: 'online',
     service: 'Sorria Odonto Backend',
     version: '1.0.0',
-    environment: process.env.NODE_ENV,
-    documentation: {
-      auth: {
-        login: 'POST /api/auth/login',
-        register: 'POST /api/auth/register/user',
-        prontuario: 'POST /api/auth/prontuario'
-      },
-      users: {
-        getAll: 'GET /api/auth/users',
-        update: 'PUT /api/auth/users/:id',
-        delete: 'DELETE /api/auth/users/:id'
-      }
-    },
-    timestamp: new Date().toISOString()
+    endpoints: {
+      login: 'POST /api/login',
+      register: 'POST /api/register/user',
+      users: 'GET /api/users'
+    }
   });
 });
 
-// Health Check Endpoint
-app.get('/', (req, res) => {
-  res.status(200).json({
-    status: 'online',
-    service: 'Sorria Odonto Backend',
-    version: '1.0.0',
-    environment: process.env.NODE_ENV,
-    apiBaseUrl: '/api',
-    documentation: {
-      auth: {
-        login: 'POST /api/login',
-        register: 'POST /api/register/user',
-        prontuario: 'POST /api/prontuario'
-      },
-      users: {
-        getAll: 'GET /api/users',
-        update: 'PUT /api/users/:id',
-        delete: 'DELETE /api/users/:id',
-        addProcedure: 'PUT /api/users/:id/procedimento'
-      }
-    },
-    timestamp: new Date().toISOString()
-  });
-});
-
-// ================
-// Error Handlers
-// ================
-// 404 Handler
+// Tratamento de Erros
 app.use((req, res) => {
-  res.status(404).json({ 
-    message: "Endpoint not found",
-    suggestion: "Try accessing /api/ endpoints or check the root / for documentation"
-  });
+  res.status(404).json({ message: "Endpoint não encontrado" });
 });
 
-// Global Error Handler
 app.use((err, req, res, next) => {
-  console.error(`[${new Date().toISOString()}] Error:`, err.stack);
-  
-  res.status(err.status || 500).json({
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong',
-    type: err.name,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
+  console.error(err.stack);
+  res.status(500).json({ message: "Erro interno do servidor" });
 });
 
-// ================
-// Server Initialization
-// ================
+// Inicialização do Servidor
 const PORT = process.env.PORT || 3000;
-const HOST = '0.0.0.0';
-
-const server = app.listen(PORT, HOST, () => {
-  console.log(`\n=== Server Started ===`);
-  console.log(`Server: http://${HOST}:${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV}`);
-  console.log(`Allowed Origins: ${allowedOrigins.join(', ')}`);
-  console.log(`Database: ${process.env.DB_FULL_URI ? 'Configured' : 'Not configured'}`);
-  console.log(`=================================\n`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
 });
-
-// ================
-// Process Management
-// ================
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received. Shutting down gracefully...');
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
-  });
-});
-
-process.on('unhandledRejection', (err) => {
-  console.error('Unhandled Rejection:', err);
-  server.close(() => process.exit(1));
-});
-
-module.exports = app;

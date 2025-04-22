@@ -1,68 +1,21 @@
 const router = require("express").Router();
-const multer = require("multer");
-const path = require("path");
 const verifyToken = require("../auth");
-const mongoose = require('mongoose');
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads");
-  },
-  filename: function (req, file, cb) {
-    cb(null, file.originalname);
-  },
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
-  fileFilter: (req, file, cb) => {
-    const mimeType = file.mimetype;
-    if (!mimeType.includes('image')) {
-      return cb(new Error("Apenas imagens são permitidas!"));
-    }
-    cb(null, true);
-  }
-});
-
 const AuthRegisterUserController = require("../controllers/AuthRegisterUserController");
 
-// Rota inicial
-router.get("/", AuthRegisterUserController.init);
-
-// Criar usuário (registro permanece público)
-router.post("/auth/register/user", upload.single("image"), AuthRegisterUserController.registerUser);
-
-// Login (rota pública)
-router.post("/auth/login", AuthRegisterUserController.loginUser);
-
-// Prontuário Paciente - SEM TOKEN
-router.post("/auth/prontuario", AuthRegisterUserController.getProntuario);
-
-// Listar todos os usuários (protegida)
-router.get("/auth/users", verifyToken, AuthRegisterUserController.getAllUsers);
-
-// Atualizar usuário (protegida)
-router.put("/auth/users/:id", verifyToken, upload.single("image"), AuthRegisterUserController.updateUser);
-
-// Deletar usuário (protegida)
-router.delete("/auth/users/:id", verifyToken, AuthRegisterUserController.deleteUser);
-
-
-// Atualizar procedimento (protegida)
-router.put('/auth/users/:id/procedimento', verifyToken, AuthRegisterUserController.addProcedimento);
-
-// Rota para servir imagens
-router.get("/imagens/:nomeArquivo", (req, res) => {
-  const nomeArquivo = req.params.nomeArquivo;
-  const caminhoImagem = path.join(__dirname, "../uploads", nomeArquivo);
-
-  res.sendFile(caminhoImagem, (err) => {
-    if (err) {
-      res.status(404).send("Imagem não encontrada");
-    }
-  });
+// Rota inicial de teste
+router.get("/", (req, res) => {
+  res.json({ message: "API Sorria Odonto funcionando!" });
 });
 
+// Rotas públicas
+router.post("/auth/register/user", AuthRegisterUserController.registerUser);
+router.post("/auth/login", AuthRegisterUserController.loginUser);
+router.post("/auth/prontuario", AuthRegisterUserController.getProntuario);
+
+// Rotas protegidas por token
+router.get("/auth/users", verifyToken, AuthRegisterUserController.getAllUsers);
+router.put("/auth/users/:id", verifyToken, AuthRegisterUserController.updateUser);
+router.delete("/auth/users/:id", verifyToken, AuthRegisterUserController.deleteUser);
+router.put('/auth/users/:id/procedimento', verifyToken, AuthRegisterUserController.addProcedimento);
 
 module.exports = router;

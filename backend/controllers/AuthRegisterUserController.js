@@ -1,78 +1,10 @@
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
+
 
 module.exports = class AuthRegisterUserController {
-  static async init(req, res) {
-    res.send({ message: "Bem-vindo à nossa API!" });
-  }
-  
-  static async healthCheck(req, res) {
-    const checks = {
-      database: {
-        status: 'OK',
-        latency: 0,
-        details: {}
-      },
-      memory: {
-        status: 'OK',
-        details: {}
-      },
-      disk: {
-        status: 'OK',
-        details: {}
-      }
-    };
-  
-    try {
-      // Teste de conexão com MongoDB
-      const dbStart = Date.now();
-      await mongoose.connection.db.admin().ping();
-      checks.database.latency = Date.now() - dbStart;
-      checks.database.details.connectionState = mongoose.connection.readyState;
-  
-      // Verificação de memória
-      const memoryUsage = process.memoryUsage();
-      checks.memory.details = {
-        rss: `${(memoryUsage.rss / 1024 / 1024).toFixed(2)} MB`,
-        heapTotal: `${(memoryUsage.heapTotal / 1024 / 1024).toFixed(2)} MB`,
-        heapUsed: `${(memoryUsage.heapUsed / 1024 / 1024).toFixed(2)} MB`,
-        external: `${(memoryUsage.external / 1024 / 1024).toFixed(2)} MB`
-      };
-  
-      // Verificação de espaço em disco (exemplo para Linux)
-      if (process.platform === 'linux') {
-        const checkDiskSpace = require('check-disk-space').default;
-        const disk = await checkDiskSpace('/');
-        checks.disk.details = {
-          free: `${(disk.free / 1024 / 1024 / 1024).toFixed(2)} GB`,
-          size: `${(disk.size / 1024 / 1024 / 1024).toFixed(2)} GB`
-        };
-      }
-  
-      // Status geral
-      const allOk = Object.values(checks).every(c => c.status === 'OK');
-      res.status(allOk ? 200 : 503).json({
-        status: allOk ? 'UP' : 'PARTIAL',
-        checks,
-        uptime: process.uptime(),
-        timestamp: new Date().toISOString(),
-        version: require('../package.json').version // Adicione sua versão
-      });
-  
-    } catch (error) {
-      checks.database.status = 'ERROR';
-      checks.database.details.error = error.message;
-      
-      res.status(503).json({
-        status: 'DOWN',
-        checks,
-        error: "Service Unavailable",
-        uptime: process.uptime(),
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
 
   static async registerUser(req, res) {
     const {
@@ -106,11 +38,7 @@ module.exports = class AuthRegisterUserController {
       valor
     } = req.body;
 
-    let image = "";
-
-    if (req.file) {
-      image = req.file.filename;
-    }
+    const image = "default-profile.jpg";
 
     // Validações atualizadas
     const requiredFields = {
@@ -357,9 +285,6 @@ module.exports = class AuthRegisterUserController {
     const cpfLimpo = cpf.replace(/\D/g, '');
 
     try {
-        // Busca TODOS os usuários (para debug - remova depois)
-        const allUsers = await User.find({});
-
         // Busca o usuário pelo CPF (formatado ou não)
         const user = await User.findOne({ 
             $or: [

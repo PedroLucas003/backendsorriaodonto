@@ -5,7 +5,7 @@ const AuthRegisterUserController = require("../controllers/AuthRegisterUserContr
 // Rotas públicas
 router.post("/login", AuthRegisterUserController.loginUser);
 router.post("/register/user", AuthRegisterUserController.registerUser);
-router.post("/api/prontuario", AuthRegisterUserController.getProntuario);
+router.post("/prontuario", AuthRegisterUserController.getProntuario);
 
 // Rotas protegidas
 router.get("/users", verifyToken, AuthRegisterUserController.getAllUsers);

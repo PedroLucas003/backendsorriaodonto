@@ -329,75 +329,92 @@ module.exports = class AuthRegisterUserController {
 }
 
   
-  static async getProntuario(req, res) {
-    const { cpf, password } = req.body;
-  
-    if (!cpf || !password) {
-      return res.status(422).json({ message: "CPF e senha são obrigatórios!" });
-    }
-  
-    try {
-      const cleanedCPF = cpf.replace(/\D/g, "");
-      const user = await User.findOne({ cpf: cleanedCPF }).select('+password');
-      
-      if (!user) {
-        return res.status(404).json({ message: "Paciente não encontrado!" });
-      }
-  
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      if (!isPasswordValid) {
-        return res.status(401).json({ message: "Senha incorreta!" });
-      }
-  
-      // Criar array de procedimentos combinando o principal e o histórico
-      const todosProcedimentos = [
-        {
-          dataProcedimento: user.dataProcedimento,
-          procedimento: user.procedimento,
-          denteFace: user.denteFace,
-          valor: user.valor,
-          modalidadePagamento: user.modalidadePagamento,
-          profissional: user.profissional,
-          isPrincipal: true
-        },
-        ...(user.historicoProcedimentos || []).map(p => ({ ...p.toObject(), isPrincipal: false }))
-      ].sort((a, b) => new Date(b.dataProcedimento) - new Date(a.dataProcedimento));
-  
-      // Retorna os dados formatados
-      const prontuario = {
-        nomeCompleto: user.nomeCompleto,
-        email: user.email,
-        cpf: user.cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4"),
-        telefone: user.telefone,
-        endereco: user.endereco,
-        dataNascimento: user.dataNascimento,
-        detalhesDoencas: user.detalhesDoencas,
-        quaisRemedios: user.quaisRemedios,
-        quaisMedicamentos: user.quaisMedicamentos,
-        quaisAnestesias: user.quaisAnestesias,
-        frequenciaFumo: user.habitos?.frequenciaFumo || "",
-        frequenciaAlcool: user.habitos?.frequenciaAlcool || "",
-        historicoCirurgia: user.historicoCirurgia,
-        exameSangue: user.exames?.exameSangue || "",
-        coagulacao: user.exames?.coagulacao || "",
-        cicatrizacao: user.exames?.cicatrizacao || "",
-        historicoOdontologico: user.historicoOdontologico,
-        sangramentoPosProcedimento: user.sangramentoPosProcedimento,
-        respiracao: user.respiracao,
-        peso: user.peso,
-        procedimentos: todosProcedimentos,
-        image: user.image
-      };
-  
-      return res.status(200).json(prontuario);
-    } catch (error) {
-      console.error("Erro ao buscar prontuário:", error);
-      res.status(500).json({ 
-        message: "Erro no servidor, tente novamente!",
-        error: error.message 
-      });
-    }
+static async getProntuario(req, res) {
+  const { cpf, password } = req.body;
+
+  if (!cpf || !password) {
+    return res.status(422).json({ message: "CPF e senha são obrigatórios!" });
   }
+
+  try {
+    const cleanedCPF = cpf.replace(/\D/g, '');
+    const user = await User.findOne({ cpf: cleanedCPF }).select('+password');
+    
+    if (!user) {
+      return res.status(404).json({ message: "Paciente não encontrado!" });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Senha incorreta!" });
+    }
+
+    // Formatar valores monetários
+    const formatarValor = (valor) => {
+      if (valor === undefined || valor === null) return null;
+      const num = typeof valor === 'string' ? 
+        parseFloat(valor.replace(/[^\d,]/g, '').replace(',', '.')) : 
+        valor;
+      return isNaN(num) ? null : num;
+    };
+
+    // Ordenar procedimentos por data (mais recente primeiro)
+    const todosProcedimentos = [
+      {
+        dataProcedimento: user.dataProcedimento,
+        procedimento: user.procedimento,
+        denteFace: user.denteFace,
+        valor: formatarValor(user.valor),
+        modalidadePagamento: user.modalidadePagamento,
+        profissional: user.profissional,
+        isPrincipal: true
+      },
+      ...(user.historicoProcedimentos || []).map(p => ({ 
+        ...p.toObject(), 
+        isPrincipal: false,
+        valor: formatarValor(p.valor)
+      }))
+    ].sort((a, b) => new Date(b.dataProcedimento) - new Date(a.dataProcedimento));
+
+    // Retornar os dados formatados
+    const prontuario = {
+      nomeCompleto: user.nomeCompleto,
+      email: user.email,
+      cpf: user.cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4"),
+      telefone: user.telefone,
+      endereco: user.endereco,
+      dataNascimento: user.dataNascimento ? new Date(user.dataNascimento).toISOString().split('T')[0] : null,
+      detalhesDoencas: user.detalhesDoencas,
+      quaisRemedios: user.quaisRemedios,
+      quaisMedicamentos: user.quaisMedicamentos,
+      quaisAnestesias: user.quaisAnestesias,
+      habitos: {
+        frequenciaFumo: user.habitos?.frequenciaFumo || null,
+        frequenciaAlcool: user.habitos?.frequenciaAlcool || null
+      },
+      historicoCirurgia: user.historicoCirurgia,
+      exames: {
+        exameSangue: user.exames?.exameSangue || null,
+        coagulacao: user.exames?.coagulacao || null,
+        cicatrizacao: user.exames?.cicatrizacao || null
+      },
+      historicoOdontologico: user.historicoOdontologico,
+      sangramentoPosProcedimento: user.sangramentoPosProcedimento,
+      respiracao: user.respiracao,
+      peso: user.peso,
+      procedimentos: todosProcedimentos,
+      image: user.image
+    };
+
+    return res.status(200).json(prontuario);
+  } catch (error) {
+    console.error("Erro ao buscar prontuário:", error);
+    res.status(500).json({ 
+      message: "Erro no servidor, tente novamente!",
+      error: error.message 
+    });
+  }
+}
 
   static async addProcedimento(req, res) {
     const { id } = req.params;

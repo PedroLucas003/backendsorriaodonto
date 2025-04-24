@@ -67,6 +67,11 @@ require("./database/connection");
 const AuthRegisterUserRoutes = require("./routes/AuthRegisterUserRoutes");
 app.use('/api', AuthRegisterUserRoutes);
 
+app.use((req, res, next) => {
+  console.log(`📦 Rota acessada: ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 // Documentação da API
 app.get('/', (req, res) => {
   res.status(200).json({

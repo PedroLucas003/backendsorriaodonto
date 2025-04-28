@@ -18,7 +18,7 @@ app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 const allowedOrigins = [
   'https://frontvercel.vercel.app', // URL do seu frontend
   'https://sorriaodontofn.com',
-  'http://localhost:3000'
+  'http://localhost:4000'
 ];
 
 app.use(cors({
@@ -97,7 +97,7 @@ app.use((err, req, res, next) => {
 });
 
 // Inicialização do Servidor
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });

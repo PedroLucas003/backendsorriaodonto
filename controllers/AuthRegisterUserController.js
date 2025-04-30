@@ -213,24 +213,37 @@ module.exports = class AuthRegisterUserController {
             };
         }
 
-        // Atualizar hábitos, se necessário
-        if (userData.frequenciaFumo || userData.frequenciaAlcool) {
-            userData.habitos = {
-                frequenciaFumo: userData.frequenciaFumo || existingUser.habitos?.frequenciaFumo,
-                frequenciaAlcool: userData.frequenciaAlcool || existingUser.habitos?.frequenciaAlcool,
-            };
-        }
+        // Atualizar hábitos - SEMPRE atualize o objeto completo de hábitos
+        userData.habitos = {
+            frequenciaFumo: userData.frequenciaFumo || existingUser.habitos?.frequenciaFumo || "",
+            frequenciaAlcool: userData.frequenciaAlcool || existingUser.habitos?.frequenciaAlcool || ""
+        };
+
+        // Remover os campos individuais para evitar duplicação
+        delete userData.frequenciaFumo;
+        delete userData.frequenciaAlcool;
 
         // Atualizar o usuário no banco
         const updatedUser = await User.findByIdAndUpdate(
             id,
             { $set: userData },
-            { new: true, runValidators: false } // Não usar validações automáticas do Mongoose
+            { 
+                new: true, 
+                runValidators: false, // Não usar validações automáticas do Mongoose
+                lean: true // Retorna objeto JavaScript simples
+            }
         );
+
+        // Preparar resposta incluindo os campos no nível raiz para o frontend
+        const responseUser = {
+            ...updatedUser,
+            frequenciaFumo: updatedUser.habitos?.frequenciaFumo || "",
+            frequenciaAlcool: updatedUser.habitos?.frequenciaAlcool || ""
+        };
 
         res.json({
             message: "Usuário atualizado com sucesso!",
-            user: updatedUser,
+            user: responseUser
         });
     } catch (error) {
         console.error(error);

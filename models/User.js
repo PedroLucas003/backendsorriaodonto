@@ -195,9 +195,10 @@ const UserSchema = new mongoose.Schema({
     required: [true, "O profissional é obrigatório"],
     trim: true
   },
-  dataProcedimento: { 
-    type: Date, 
-    required: [true, "A data do procedimento é obrigatória"],
+  dataProcedimento: {
+    type: String,
+    required: true,
+
     validate: {
       validator: function(value) {
         if (!this.dataNascimento) return true;

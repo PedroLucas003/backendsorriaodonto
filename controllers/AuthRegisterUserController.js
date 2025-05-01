@@ -440,7 +440,29 @@ static async addProcedimento(req, res) {
     profissional
   } = req.body;
 
-  // Validações (mantenha as existentes)
+  // Validação mais robusta
+  const requiredFields = {
+    dataProcedimento: "Data do procedimento é obrigatória",
+    procedimento: "Procedimento é obrigatório",
+    denteFace: "Dente/Face é obrigatório",
+    valor: "Valor é obrigatório",
+    modalidadePagamento: "Modalidade de pagamento é obrigatória",
+    profissional: "Profissional é obrigatório"
+  };
+
+  const errors = {};
+  for (const [field, message] of Object.entries(requiredFields)) {
+    if (!req.body[field]) {
+      errors[field] = message;
+    }
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return res.status(422).json({ 
+      message: "Campos obrigatórios faltando",
+      errors 
+    });
+  }
 
   try {
     const user = await User.findById(id);
@@ -448,34 +470,40 @@ static async addProcedimento(req, res) {
       return res.status(404).json({ message: "Usuário não encontrado!" });
     }
 
-    // Ajuste para compensar a diferença de 1 dia
-    const dataOriginal = new Date(dataProcedimento);
-    const dataAjustada = new Date(dataOriginal);
-    dataAjustada.setDate(dataOriginal.getDate() - 1); // Compensa a diferença
+    // Validação de datas
+    const procDate = new Date(dataProcedimento);
+    if (isNaN(procDate.getTime())) {
+      return res.status(400).json({ message: "Data do procedimento inválida" });
+    }
 
-    // Formata para YYYY-MM-DD
-    const dataFormatada = dataAjustada.toISOString().split('T')[0];
-
-    // Validação contra data de nascimento
-    if (dataFormatada < user.dataNascimento.toISOString().split('T')[0]) {
+    const birthDate = new Date(user.dataNascimento);
+    if (procDate < birthDate) {
       return res.status(400).json({
         message: "Data do procedimento não pode ser antes da data de nascimento"
       });
     }
 
+    // Formatação e validação do valor
     const valorNumerico = parseFloat(
       String(valor).replace(/[^\d,]/g, '').replace(',', '.')
     );
 
+    if (isNaN(valorNumerico) || valorNumerico <= 0) {
+      return res.status(400).json({ 
+        message: "Valor inválido. Deve ser um número maior que zero" 
+      });
+    }
+
     const novoProcedimento = {
-      dataProcedimento: dataFormatada, // Usa a data ajustada
+      dataProcedimento: procDate, // string pura, sem conversão
       procedimento: procedimento.trim(),
       denteFace: denteFace.trim(),
       valor: valorNumerico,
       modalidadePagamento: modalidadePagamento.trim(),
       profissional: profissional.trim(),
-      createdAt: new Date()
+      createdAt: new Date() // aqui tudo bem usar Date
     };
+    
 
     const usuarioAtualizado = await User.findByIdAndUpdate(
       id,

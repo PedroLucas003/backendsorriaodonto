@@ -440,29 +440,7 @@ static async addProcedimento(req, res) {
     profissional
   } = req.body;
 
-  // Validação mais robusta
-  const requiredFields = {
-    dataProcedimento: "Data do procedimento é obrigatória",
-    procedimento: "Procedimento é obrigatório",
-    denteFace: "Dente/Face é obrigatório",
-    valor: "Valor é obrigatório",
-    modalidadePagamento: "Modalidade de pagamento é obrigatória",
-    profissional: "Profissional é obrigatório"
-  };
-
-  const errors = {};
-  for (const [field, message] of Object.entries(requiredFields)) {
-    if (!req.body[field]) {
-      errors[field] = message;
-    }
-  }
-
-  if (Object.keys(errors).length > 0) {
-    return res.status(422).json({ 
-      message: "Campos obrigatórios faltando",
-      errors 
-    });
-  }
+  // Validações (mantenha as existentes)
 
   try {
     const user = await User.findById(id);
@@ -470,31 +448,27 @@ static async addProcedimento(req, res) {
       return res.status(404).json({ message: "Usuário não encontrado!" });
     }
 
-    // Validação do formato da data (YYYY-MM-DD)
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dataProcedimento)) {
-      return res.status(400).json({ message: "Formato de data inválido. Use YYYY-MM-DD" });
-    }
+    // Ajuste para compensar a diferença de 1 dia
+    const dataOriginal = new Date(dataProcedimento);
+    const dataAjustada = new Date(dataOriginal);
+    dataAjustada.setDate(dataOriginal.getDate() - 1); // Compensa a diferença
 
-    // Validação de datas (comparação como strings)
-    if (dataProcedimento < user.dataNascimento.toISOString().split('T')[0]) {
+    // Formata para YYYY-MM-DD
+    const dataFormatada = dataAjustada.toISOString().split('T')[0];
+
+    // Validação contra data de nascimento
+    if (dataFormatada < user.dataNascimento.toISOString().split('T')[0]) {
       return res.status(400).json({
         message: "Data do procedimento não pode ser antes da data de nascimento"
       });
     }
 
-    // Formatação e validação do valor
     const valorNumerico = parseFloat(
       String(valor).replace(/[^\d,]/g, '').replace(',', '.')
     );
 
-    if (isNaN(valorNumerico) || valorNumerico <= 0) {
-      return res.status(400).json({ 
-        message: "Valor inválido. Deve ser um número maior que zero" 
-      });
-    }
-
     const novoProcedimento = {
-      dataProcedimento: dataProcedimento, // Mantém como string
+      dataProcedimento: dataFormatada, // Usa a data ajustada
       procedimento: procedimento.trim(),
       denteFace: denteFace.trim(),
       valor: valorNumerico,

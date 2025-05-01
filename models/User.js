@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 // Schema para os procedimentos
 const ProcedimentoSchema = new mongoose.Schema({
   dataProcedimento: { 
-    type: Date,
+    type: String,
     required: true
   },
   procedimento: {

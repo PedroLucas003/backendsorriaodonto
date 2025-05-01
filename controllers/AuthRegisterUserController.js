@@ -495,14 +495,15 @@ static async addProcedimento(req, res) {
     }
 
     const novoProcedimento = {
-      dataProcedimento: procDate,
+      dataProcedimento: procDate, // string pura, sem conversão
       procedimento: procedimento.trim(),
       denteFace: denteFace.trim(),
       valor: valorNumerico,
       modalidadePagamento: modalidadePagamento.trim(),
       profissional: profissional.trim(),
-      createdAt: new Date()
+      createdAt: new Date() // aqui tudo bem usar Date
     };
+    
 
     const usuarioAtualizado = await User.findByIdAndUpdate(
       id,

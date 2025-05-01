@@ -470,14 +470,13 @@ static async addProcedimento(req, res) {
       return res.status(404).json({ message: "Usuário não encontrado!" });
     }
 
-    // Validação de datas
-    const procDate = new Date(dataProcedimento);
-    if (isNaN(procDate.getTime())) {
-      return res.status(400).json({ message: "Data do procedimento inválida" });
+    // Validação do formato da data (YYYY-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dataProcedimento)) {
+      return res.status(400).json({ message: "Formato de data inválido. Use YYYY-MM-DD" });
     }
 
-    const birthDate = new Date(user.dataNascimento);
-    if (procDate < birthDate) {
+    // Validação de datas (comparação como strings)
+    if (dataProcedimento < user.dataNascimento.toISOString().split('T')[0]) {
       return res.status(400).json({
         message: "Data do procedimento não pode ser antes da data de nascimento"
       });
@@ -495,15 +494,14 @@ static async addProcedimento(req, res) {
     }
 
     const novoProcedimento = {
-      dataProcedimento: procDate, // string pura, sem conversão
+      dataProcedimento: dataProcedimento, // Mantém como string
       procedimento: procedimento.trim(),
       denteFace: denteFace.trim(),
       valor: valorNumerico,
       modalidadePagamento: modalidadePagamento.trim(),
       profissional: profissional.trim(),
-      createdAt: new Date() // aqui tudo bem usar Date
+      createdAt: new Date()
     };
-    
 
     const usuarioAtualizado = await User.findByIdAndUpdate(
       id,

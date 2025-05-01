@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 // Schema para os procedimentos
 const ProcedimentoSchema = new mongoose.Schema({
-  dataProcedimento: { 
+  dataProcedimento: {
     type: String,
     required: true
   },
@@ -15,18 +15,18 @@ const ProcedimentoSchema = new mongoose.Schema({
     required: [true, "Dente/Face é obrigatório"],
     trim: true
   },
-  profissional: { 
-    type: String, 
+  profissional: {
+    type: String,
     required: [true, "O profissional é obrigatório"],
     trim: true
   },
-  modalidadePagamento: { 
-    type: String, 
+  modalidadePagamento: {
+    type: String,
     required: [true, "A modalidade de pagamento é obrigatória"],
     enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto"]
   },
-  valor: { 
-    type: Number, 
+  valor: {
+    type: Number,
     required: [true, "O valor é obrigatório"],
     min: [0, "O valor não pode ser negativo"]
   },
@@ -35,7 +35,7 @@ const ProcedimentoSchema = new mongoose.Schema({
     default: Date.now,
     immutable: true
   }
-}, { 
+}, {
   _id: true, // Isso é essencial
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
@@ -44,73 +44,73 @@ const ProcedimentoSchema = new mongoose.Schema({
 
 const UserSchema = new mongoose.Schema({
   // Dados pessoais
-  nomeCompleto: { 
-    type: String, 
+  nomeCompleto: {
+    type: String,
     required: [true, "O nome completo é obrigatório"],
     trim: true
   },
-  email: { 
-    type: String, 
+  email: {
+    type: String,
     required: [true, "O email é obrigatório"],
     unique: true,
     lowercase: true,
     match: [/^\w+([.-]?\w+)@\w+([.-]?\w+)(\.\w{2,3})+$/, "Por favor, insira um email válido"]
   },
-  cpf: { 
-    type: String, 
+  cpf: {
+    type: String,
     required: [true, "O CPF é obrigatório"],
     unique: true,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         return /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(v) || /^\d{11}$/.test(v);
       },
       message: "Use o formato 000.000.000-00 ou 11 dígitos"
     }
   },
-  telefone: { 
-    type: String, 
+  telefone: {
+    type: String,
     required: [true, "O telefone é obrigatório"],
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         return /^\(?\d{2}\)?[\s-]?\d{4,5}[\s-]?\d{4}$/.test(v);
       },
       message: props => `${props.value} não é um telefone válido!`
     }
   },
-  endereco: { 
-    type: String, 
+  endereco: {
+    type: String,
     required: [true, "O endereço é obrigatório"],
     trim: true
   },
-  dataNascimento: { 
-    type: Date, 
+  dataNascimento: {
+    type: Date,
     required: [true, "A data de nascimento é obrigatória"],
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         return v < new Date();
       },
       message: "A data de nascimento não pode ser no futuro"
     }
   },
-  image: { 
+  image: {
     type: String,
     default: "default-profile.jpg"
   },
-  password: { 
-    type: String, 
+  password: {
+    type: String,
     required: [true, "A senha é obrigatória"],
     minlength: [6, "A senha deve ter pelo menos 6 caracteres"],
     select: false
   },
-  
+
   // Informações de saúde
-  detalhesDoencas: { 
-    type: String, 
+  detalhesDoencas: {
+    type: String,
     required: [true, "Os detalhes sobre doenças são obrigatórios"],
     trim: true
   },
-  quaisRemedios: { 
-    type: String, 
+  quaisRemedios: {
+    type: String,
     required: [true, "Os medicamentos são obrigatórios"],
     trim: true
   },
@@ -119,54 +119,54 @@ const UserSchema = new mongoose.Schema({
     required: [true, "Os medicamentos são obrigatórios"],
     trim: true
   },
-  quaisAnestesias: { 
-    type: String, 
+  quaisAnestesias: {
+    type: String,
     required: [true, "As anestesias são obrigatórias"],
     trim: true
   },
-  alergiaMedicamento: { 
+  alergiaMedicamento: {
     type: String,
     trim: true
   },
 
   // Campos agrupados
   habitos: {
-    frequenciaFumo: { 
+    frequenciaFumo: {
       type: String,
-      enum: ["Nunca","Raramente","Ocasionalmente", "Frequentemente", "Diariamente", ""],
+      enum: ["Nunca", "Raramente", "Ocasionalmente", "Frequentemente", "Diariamente", ""],
       default: ""
     },
-    frequenciaAlcool: { 
+    frequenciaAlcool: {
       type: String,
-      enum: ["Nunca", "Raramente","Ocasionalmente", "Frequentemente", "Diariamente", ""],
+      enum: ["Nunca", "Raramente", "Ocasionalmente", "Frequentemente", "Diariamente", ""],
       default: ""
     }
   },
 
   // Exames
   exames: {
-    exameSangue: { 
+    exameSangue: {
       type: String,
       trim: true
     },
-    coagulacao: { 
+    coagulacao: {
       type: String,
       trim: true
     },
-    cicatrizacao: { 
+    cicatrizacao: {
       type: String,
       trim: true
     }
   },
 
   // Históricos
-  historicoCirurgia: { 
-    type: String, 
+  historicoCirurgia: {
+    type: String,
     required: [true, "O histórico cirúrgico é obrigatório"],
     trim: true
   },
-  historicoOdontologico: { 
-    type: String, 
+  historicoOdontologico: {
+    type: String,
     trim: true
   },
 
@@ -181,47 +181,45 @@ const UserSchema = new mongoose.Schema({
     required: [true, "Dente/Face é obrigatório"],
     trim: true
   },
-  peso: { 
+  peso: {
     type: String,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         return !v || /^\d+(\.\d{1,2})?$/.test(v);
       },
       message: "Peso deve ser um número válido (ex: 70.5)"
     }
   },
-  profissional: { 
-    type: String, 
+  profissional: {
+    type: String,
     required: [true, "O profissional é obrigatório"],
     trim: true
   },
   dataProcedimento: {
-    type: String,
+    type: String, // Mantém como String
     required: true,
-
     validate: {
-      validator: function(value) {
-        if (!this.dataNascimento) return true;
-        return value > this.dataNascimento;
+      validator: function (v) {
+        return /^\d{4}-\d{2}-\d{2}$/.test(v); // Valida formato YYYY-MM-DD
       },
-      message: 'Data do procedimento principal deve ser após a data de nascimento'
+      message: "Formato de data inválido. Use YYYY-MM-DD"
     }
   },
-  modalidadePagamento: { 
-    type: String, 
+  modalidadePagamento: {
+    type: String,
     required: [true, "A modalidade de pagamento é obrigatória"],
     enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto"]
   },
-  valor: { 
-    type: Number, 
+  valor: {
+    type: Number,
     required: [true, "O valor é obrigatório"],
     min: [0, "O valor não pode ser negativo"]
   },
-  sangramentoPosProcedimento: { 
+  sangramentoPosProcedimento: {
     type: String,
     trim: true
   },
-  respiracao: { 
+  respiracao: {
     type: String,
     trim: true
   },
@@ -233,28 +231,28 @@ const UserSchema = new mongoose.Schema({
   },
 
   // Controle de acesso
-  role: { 
-    type: String, 
+  role: {
+    type: String,
     default: "user",
     enum: ["user", "admin", "medico"]
   },
-  createdAt: { 
-    type: Date, 
+  createdAt: {
+    type: Date,
     default: Date.now,
     immutable: true
   }
 }, {
   timestamps: true,
-  toJSON: { 
+  toJSON: {
     virtuals: true,
-    transform: function(doc, ret) {
+    transform: function (doc, ret) {
       delete ret.password;
       return ret;
     }
   },
-  toObject: { 
+  toObject: {
     virtuals: true,
-    transform: function(doc, ret) {
+    transform: function (doc, ret) {
       delete ret.password;
       return ret;
     }
@@ -267,17 +265,17 @@ UserSchema.index({ "historicoProcedimentos.dataProcedimento": 1 });
 UserSchema.index({ "historicoProcedimentos.profissional": 1 });
 
 // Middleware para pré-processamento e validação
-UserSchema.pre('save', function(next) {
+UserSchema.pre('save', function (next) {
   // Formatação do nome
   if (this.isModified('nomeCompleto')) {
     this.nomeCompleto = this.nomeCompleto.trim();
   }
-  
+
   // Formatação do CPF
   if (this.isModified('cpf') && !this.cpf.includes('.')) {
     this.cpf = this.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
   }
-  
+
   // Validação de datas do procedimento principal
   if (this.isModified('dataProcedimento') && this.dataNascimento && this.dataProcedimento < this.dataNascimento) {
     throw new Error("Data do procedimento principal não pode ser antes da data de nascimento");
@@ -291,19 +289,19 @@ UserSchema.pre('save', function(next) {
       }
     });
   }
-  
+
   next();
 });
 
 // Virtual para nome formatado
-UserSchema.virtual('nomeFormatado').get(function() {
+UserSchema.virtual('nomeFormatado').get(function () {
   return this.nomeCompleto.split(' ')
     .map(n => n.charAt(0).toUpperCase() + n.slice(1).toLowerCase())
     .join(' ');
 });
 
 // Virtual para idade
-UserSchema.virtual('idade').get(function() {
+UserSchema.virtual('idade').get(function () {
   if (!this.dataNascimento) return null;
   const diff = Date.now() - this.dataNascimento.getTime();
   const ageDate = new Date(diff);
@@ -311,9 +309,9 @@ UserSchema.virtual('idade').get(function() {
 });
 
 // Virtual para o último procedimento
-UserSchema.virtual('ultimoProcedimento').get(function() {
+UserSchema.virtual('ultimoProcedimento').get(function () {
   if (this.historicoProcedimentos && this.historicoProcedimentos.length > 0) {
-    return this.historicoProcedimentos.reduce((latest, current) => 
+    return this.historicoProcedimentos.reduce((latest, current) =>
       new Date(current.dataProcedimento) > new Date(latest.dataProcedimento) ? current : latest
     );
   }
@@ -321,7 +319,7 @@ UserSchema.virtual('ultimoProcedimento').get(function() {
 });
 
 // Método para adicionar procedimento ao histórico
-UserSchema.methods.adicionarProcedimento = function(procedimentoData) {
+UserSchema.methods.adicionarProcedimento = function (procedimentoData) {
   this.historicoProcedimentos.push(procedimentoData);
   return this.save();
 };

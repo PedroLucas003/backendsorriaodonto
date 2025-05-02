@@ -7,189 +7,262 @@ const mongoose = require("mongoose");
 module.exports = class AuthRegisterUserController {
 
   static async registerUser(req, res) {
-    const {
-      nomeCompleto,
-      email,
-      cpf,
-      telefone,
-      endereco,
-      dataNascimento,
-      password,
-      confirmPassword,
-      detalhesDoencas,
-      quaisRemedios,
-      quaisMedicamentos,
-      quaisAnestesias,
-      frequenciaFumo,
-      frequenciaAlcool,
-      historicoCirurgia,
-      exameSangue,
-      coagulacao,
-      cicatrizacao,
-      historicoOdontologico,
-      sangramentoPosProcedimento,
-      respiracao,
-      peso,
-      procedimento,
-      denteFace,
-      profissional,
-      dataProcedimento,
-      modalidadePagamento,
-      valor
-    } = req.body;
-
-    console.log('Data Nascimento recebida:', dataNascimento, 'Tipo:', typeof dataNascimento);
-  console.log('Data Procedimento recebida:', dataProcedimento, 'Tipo:', typeof dataProcedimento);
-
-    const image = "default-profile.jpg";
-
-    // Validações
-    const requiredFields = {
-      nomeCompleto: "O nome completo é obrigatório!",
-      email: "O email é obrigatório!",
-      cpf: "O CPF é obrigatório!",
-      telefone: "O telefone é obrigatório!",
-      endereco: "O endereço é obrigatório!",
-      dataNascimento: "A data de nascimento é obrigatória!",
-      password: "A senha é obrigatória!",
-      detalhesDoencas: "Os detalhes sobre doenças são obrigatórios!",
-      quaisRemedios: "Informação sobre medicamentos é obrigatória!",
-      quaisMedicamentos: "Informação sobre medicamentos é obrigatória!",
-      historicoCirurgia: "O histórico cirúrgico é obrigatório!",
-      procedimento: "O procedimento é obrigatório!",
-      denteFace: "Dente/Face é obrigatório!",
-      profissional: "O profissional é obrigatório!",
-      dataProcedimento: "A data do procedimento é obrigatória!",
-      modalidadePagamento: "A modalidade de pagamento é obrigatória!",
-      valor: "O valor é obrigatório!"
-    };
-
-    // Validação de campos obrigatórios
-    for (const [field, message] of Object.entries(requiredFields)) {
-      if (!req.body[field]) {
-        return res.status(422).json({ message });
-      }
-    }
-
-    // Validação de senha
-    if (password !== confirmPassword) {
-      return res.status(422).json({ message: "As senhas não são iguais!" });
-    }
-
-    // Verifica se usuário já existe
-    const userExist = await User.findOne({ cpf: cpf });
-    if (userExist) {
-      return res.status(422).json({ message: "Já existe um usuário com esse CPF!" });
-    }
-
-    // Validação de datas
-    const nascimentoDate = new Date(dataNascimento);
-    const procedimentoDate = new Date(dataProcedimento);
-
-    console.log('Nascimento Date:', nascimentoDate);
-    console.log('Procedimento Date:', procedimentoDate);
-    console.log('Comparação:', procedimentoDate > nascimentoDate);
-    
-    // Verifica se as datas são válidas
-    if (isNaN(nascimentoDate.getTime())) {
-      return res.status(422).json({ 
-        message: "Data de nascimento inválida!",
-        received: dataNascimento
+    console.log("\n--- INÍCIO DO REGISTRO DE USUÁRIO ---");
+    console.log("Endpoint: POST /api/register/user");
+    console.log("Horário:", new Date().toISOString());
+  
+    try {
+      // 1. Log do corpo completo da requisição (exceto senhas)
+      console.group("Corpo da requisição recebido:");
+      Object.entries(req.body).forEach(([key, value]) => {
+        if (key !== 'password' && key !== 'confirmPassword') {
+          console.log(`${key.padEnd(25)}:`, value, `| Tipo: ${typeof value}`);
+        }
       });
-    }
-    
-    if (isNaN(procedimentoDate.getTime())) {
-      return res.status(422).json({ 
-        message: "Data do procedimento inválida!",
-        received: dataProcedimento
-      });
-    }
-    
-    // Verifica se data procedimento > data nascimento (corrigindo a comparação)
-    if (procedimentoDate <= nascimentoDate) {
-      return res.status(422).json({ 
-        message: "Data do procedimento deve ser após a data de nascimento",
-        dataNascimento: nascimentoDate.toISOString().split('T')[0],
-        dataProcedimento: procedimentoDate.toISOString().split('T')[0]
-      });
-    }
-
-    // Validação de valor monetário
-    const valorNumerico = parseFloat(valor.toString().replace(/[^\d,]/g, '').replace(',', '.'));
-    if (isNaN(valorNumerico)) {
-      return res.status(422).json({ message: "Valor inválido! Use números com vírgula ou ponto decimal" });
-    }
-
-    // Criptografia da senha
-    const salt = await bcrypt.genSalt(12);
-    const passwordHash = await bcrypt.hash(password, salt);
-
-    // Criação do usuário
-    const user = new User({
-      nomeCompleto,
-      email,
-      cpf,
-      telefone,
-      endereco,
-      dataNascimento: nascimentoDate, // Armazena como Date
-      dataProcedimento: procedimentoDate, // Armazena como Date
-      image,
-      password: passwordHash,
-      detalhesDoencas,
-      quaisRemedios,
-      quaisMedicamentos,
-      quaisAnestesias,
-      habitos: {
+      console.groupEnd();
+  
+      // 2. Desestruturação com logs
+      const {
+        nomeCompleto,
+        email,
+        cpf,
+        telefone,
+        endereco,
+        dataNascimento,
+        password,
+        confirmPassword,
+        detalhesDoencas,
+        quaisRemedios,
+        quaisMedicamentos,
+        quaisAnestesias,
         frequenciaFumo,
-        frequenciaAlcool
-      },
-      historicoCirurgia,
-      exames: {
+        frequenciaAlcool,
+        historicoCirurgia,
         exameSangue,
         coagulacao,
-        cicatrizacao
-      },
-      historicoOdontologico,
-      sangramentoPosProcedimento,
-      respiracao,
-      peso,
-      procedimento,
-      denteFace,
-      profissional,
-      modalidadePagamento,
-      valor: valorNumerico // Armazena como número
-    });
-
-    try {
-      await user.save();
+        cicatrizacao,
+        historicoOdontologico,
+        sangramentoPosProcedimento,
+        respiracao,
+        peso,
+        procedimento,
+        denteFace,
+        profissional,
+        dataProcedimento,
+        modalidadePagamento,
+        valor
+      } = req.body;
+  
+      const image = "default-profile.jpg";
+  
+      // 3. Logs específicos para datas
+      console.group("Debug de Datas:");
+      console.log("Data Nascimento (raw):", dataNascimento, "| Tipo:", typeof dataNascimento);
+      console.log("Data Procedimento (raw):", dataProcedimento, "| Tipo:", typeof dataProcedimento);
       
-      // Retorna resposta formatada
-      res.status(201).json({ 
+      const nascimentoDate = new Date(dataNascimento);
+      const procedimentoDate = new Date(dataProcedimento);
+      
+      console.log("Data Nascimento (Date):", nascimentoDate, "| Válida?", !isNaN(nascimentoDate.getTime()));
+      console.log("Data Procedimento (Date):", procedimentoDate, "| Válida?", !isNaN(procedimentoDate.getTime()));
+      console.log("Comparação datas (proc > nasc):", procedimentoDate > nascimentoDate);
+      console.groupEnd();
+  
+      // 4. Validações
+      console.group("Validações:");
+      const requiredFields = {
+        nomeCompleto: "O nome completo é obrigatório!",
+        email: "O email é obrigatório!",
+        cpf: "O CPF é obrigatório!",
+        telefone: "O telefone é obrigatório!",
+        endereco: "O endereço é obrigatório!",
+        dataNascimento: "A data de nascimento é obrigatória!",
+        password: "A senha é obrigatória!",
+        detalhesDoencas: "Os detalhes sobre doenças são obrigatórios!",
+        quaisRemedios: "Informação sobre medicamentos é obrigatória!",
+        quaisMedicamentos: "Informação sobre medicamentos é obrigatória!",
+        historicoCirurgia: "O histórico cirúrgico é obrigatório!",
+        procedimento: "O procedimento é obrigatório!",
+        denteFace: "Dente/Face é obrigatório!",
+        profissional: "O profissional é obrigatório!",
+        dataProcedimento: "A data do procedimento é obrigatória!",
+        modalidadePagamento: "A modalidade de pagamento é obrigatória!",
+        valor: "O valor é obrigatório!"
+      };
+  
+      // Validação de campos obrigatórios
+      let missingFields = [];
+      for (const [field, message] of Object.entries(requiredFields)) {
+        if (!req.body[field]) {
+          missingFields.push(field);
+        }
+      }
+  
+      if (missingFields.length > 0) {
+        console.error("Campos obrigatórios faltando:", missingFields);
+        return res.status(422).json({ 
+          message: `Campos obrigatórios faltando: ${missingFields.join(", ")}`,
+          missingFields
+        });
+      }
+  
+      // Validação de senha
+      if (password !== confirmPassword) {
+        console.error("As senhas não coincidem");
+        return res.status(422).json({ message: "As senhas não são iguais!" });
+      }
+  
+      // Verifica se usuário já existe
+      const userExist = await User.findOne({ cpf: cpf });
+      if (userExist) {
+        console.error("CPF já cadastrado:", cpf);
+        return res.status(422).json({ message: "Já existe um usuário com esse CPF!" });
+      }
+  
+      // Validação de datas
+      if (isNaN(nascimentoDate.getTime())) {
+        console.error("Data de nascimento inválida:", dataNascimento);
+        return res.status(422).json({ 
+          message: "Data de nascimento inválida!",
+          received: dataNascimento,
+          expectedFormat: "YYYY-MM-DD"
+        });
+      }
+      
+      if (isNaN(procedimentoDate.getTime())) {
+        console.error("Data do procedimento inválida:", dataProcedimento);
+        return res.status(422).json({ 
+          message: "Data do procedimento inválida!",
+          received: dataProcedimento,
+          expectedFormat: "YYYY-MM-DD"
+        });
+      }
+      
+      if (procedimentoDate <= nascimentoDate) {
+        console.error("Problema na ordem das datas:", {
+          dataNascimento: nascimentoDate.toISOString(),
+          dataProcedimento: procedimentoDate.toISOString()
+        });
+        return res.status(422).json({ 
+          message: "Data do procedimento deve ser após a data de nascimento",
+          dataNascimento: nascimentoDate.toISOString().split('T')[0],
+          dataProcedimento: procedimentoDate.toISOString().split('T')[0],
+          help: "A data do procedimento deve ser posterior à data de nascimento"
+        });
+      }
+  
+      // Validação de valor monetário
+      const valorNumerico = parseFloat(valor.toString().replace(/[^\d,]/g, '').replace(',', '.'));
+      console.log("Valor convertido:", valor, "->", valorNumerico);
+      
+      if (isNaN(valorNumerico)) {
+        console.error("Valor monetário inválido:", valor);
+        return res.status(422).json({ 
+          message: "Valor inválido! Use números com vírgula ou ponto decimal",
+          received: valor,
+          example: "250,00 ou 250.00"
+        });
+      }
+      console.groupEnd();
+  
+      // 5. Criação do usuário
+      console.group("Criando usuário...");
+      const salt = await bcrypt.genSalt(12);
+      const passwordHash = await bcrypt.hash(password, salt);
+  
+      const user = new User({
+        nomeCompleto,
+        email,
+        cpf,
+        telefone,
+        endereco,
+        dataNascimento: nascimentoDate,
+        dataProcedimento: procedimentoDate,
+        image,
+        password: passwordHash,
+        detalhesDoencas,
+        quaisRemedios,
+        quaisMedicamentos,
+        quaisAnestesias,
+        habitos: {
+          frequenciaFumo,
+          frequenciaAlcool
+        },
+        historicoCirurgia,
+        exames: {
+          exameSangue,
+          coagulacao,
+          cicatrizacao
+        },
+        historicoOdontologico,
+        sangramentoPosProcedimento,
+        respiracao,
+        peso,
+        procedimento,
+        denteFace,
+        profissional,
+        modalidadePagamento,
+        valor: valorNumerico
+      });
+  
+      console.log("Usuário preparado para salvamento:", {
+        nomeCompleto,
+        email,
+        cpf: cpf.replace(/\d(?=\d{4})/g, "*"), // Mascara o CPF parcialmente
+        dataNascimento: nascimentoDate.toISOString(),
+        dataProcedimento: procedimentoDate.toISOString()
+      });
+  
+      // 6. Salvamento no banco de dados
+      console.log("Salvando usuário no banco de dados...");
+      await user.save();
+      console.log("Usuário salvo com sucesso!");
+  
+      // 7. Resposta de sucesso
+      const responseData = {
         message: "Usuário cadastrado com sucesso!",
         user: {
           _id: user._id,
           nomeCompleto: user.nomeCompleto,
           email: user.email,
-          dataNascimento: user.dataNascimento.toISOString().split('T')[0], // Retorna como YYYY-MM-DD
-          dataProcedimento: user.dataProcedimento.toISOString().split('T')[0], // Retorna como YYYY-MM-DD
+          dataNascimento: user.dataNascimento.toISOString().split('T')[0],
+          dataProcedimento: user.dataProcedimento.toISOString().split('T')[0],
           procedimento: user.procedimento,
           denteFace: user.denteFace,
           valor: user.valor
         }
-      });
-      
+      };
+  
+      console.group("Resposta de sucesso:");
+      console.log(responseData);
+      console.groupEnd();
+  
+      res.status(201).json(responseData);
+      console.log("--- REGISTRO CONCLUÍDO COM SUCESSO ---\n");
+  
     } catch (error) {
-      console.error("Erro detalhado:", {
-        error: error,
-        stack: error.stack
-      });
+      console.group("Erro durante o registro:");
+      console.error("Mensagem de erro:", error.message);
+      console.error("Stack trace:", error.stack);
       
+      if (error.name === "ValidationError") {
+        console.error("Erros de validação:", error.errors);
+      }
+      
+      console.groupEnd();
+  
       res.status(500).json({ 
         message: "Ocorreu um erro ao cadastrar o usuário",
-        error: process.env.NODE_ENV === 'development' ? error.message : null
+        error: process.env.NODE_ENV === 'development' ? {
+          message: error.message,
+          stack: error.stack,
+          ...(error.errors && { validationErrors: error.errors })
+        } : null
       });
+      
+      console.error("--- REGISTRO FALHOU ---\n");
     }
-}
+  }
 
   static async updateUser(req, res) {
     const { id } = req.params;

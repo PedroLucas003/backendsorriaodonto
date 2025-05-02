@@ -83,13 +83,27 @@ module.exports = class AuthRegisterUserController {
     const nascimentoDate = new Date(dataNascimento);
     const procedimentoDate = new Date(dataProcedimento);
     
-    if (isNaN(nascimentoDate.getTime()) || isNaN(procedimentoDate.getTime())) {
-      return res.status(422).json({ message: "Formato de data inválido! Use YYYY-MM-DD" });
+    if (isNaN(nascimentoDate.getTime())) {
+      return res.status(422).json({ 
+        message: "Data de nascimento inválida! Use o formato YYYY-MM-DD",
+        received: dataNascimento
+      });
     }
 
-    if (procedimentoDate <= nascimentoDate) {
-      return res.status(422).json({ message: "Data do procedimento deve ser após a data de nascimento!" });
+    if (isNaN(procedimentoDate.getTime())) {
+      return res.status(422).json({ 
+        message: "Data do procedimento inválida! Use o formato YYYY-MM-DD",
+        received: dataProcedimento
+      });
     }
+     // Verifica se data procedimento > data nascimento
+  if (procedimentoDate <= nascimentoDate) {
+    return res.status(422).json({ 
+      message: "Data do procedimento deve ser após a data de nascimento",
+      dataNascimento: nascimentoDate.toISOString().split('T')[0],
+      dataProcedimento: procedimentoDate.toISOString().split('T')[0]
+    });
+  }
 
     // Validação de valor monetário
     const valorNumerico = parseFloat(valor.toString().replace(/[^\d,]/g, '').replace(',', '.'));
@@ -180,31 +194,36 @@ module.exports = class AuthRegisterUserController {
         }
 
         // Garantir que as datas sejam objetos Date e ignorem horas
-        const procDate = userData.dataProcedimento
-            ? new Date(userData.dataProcedimento).setHours(0, 0, 0, 0)
-            : null;
-        const birthDate = userData.dataNascimento
-            ? new Date(userData.dataNascimento).setHours(0, 0, 0, 0)
-            : new Date(existingUser.dataNascimento).setHours(0, 0, 0, 0);
+        const procDate = userData.dataProcedimento ? new Date(userData.dataProcedimento) : null;
+    const birthDate = userData.dataNascimento ? new Date(userData.dataNascimento) : null;
 
         // Validar data do procedimento
-        if (procDate && procDate < birthDate) {
-            return res.status(400).json({
-                error: true,
-                message: "Data do procedimento não pode ser antes da data de nascimento.",
-            });
+        if (procDate && isNaN(procDate.getTime())) {
+          return res.status(400).json({ 
+            message: "Data do procedimento inválida!",
+            received: userData.dataProcedimento
+          });
         }
 
         // Validar data de nascimento
-        if (userData.dataNascimento) {
-            const existingProcDate = new Date(existingUser.dataProcedimento).setHours(0, 0, 0, 0);
-            if (birthDate > existingProcDate) {
-                return res.status(400).json({
-                    error: true,
-                    message: "Data de nascimento não pode ser depois da data do procedimento.",
-                });
-            }
+        if (birthDate && isNaN(birthDate.getTime())) {
+          return res.status(400).json({ 
+            message: "Data de nascimento inválida!",
+            received: userData.dataNascimento
+          });
         }
+
+        const existingBirthDate = new Date(existingUser.dataNascimento);
+    const finalBirthDate = birthDate || existingBirthDate;
+    
+    if (procDate && procDate <= finalBirthDate) {
+      return res.status(400).json({
+        message: "Data do procedimento deve ser após a data de nascimento",
+        dataNascimento: finalBirthDate.toISOString().split('T')[0],
+        dataProcedimento: procDate.toISOString().split('T')[0]
+      });
+    }
+
 
         // Atualizar imagem, se necessário
         if (req.file) {
@@ -494,9 +513,9 @@ static async addProcedimento(req, res) {
     
     if (isNaN(procDate.getTime())) {
       return res.status(400).json({ 
-        message: "Data inválida! Use o formato DD/MM/YYYY ou YYYY-MM-DD",
+        message: "Data inválida! Use o formato YYYY-MM-DD",
         receivedValue: dataProcedimento,
-        expectedFormats: ["DD/MM/YYYY", "YYYY-MM-DD"]
+        example: "2023-12-31"
       });
     }
 
@@ -505,8 +524,9 @@ static async addProcedimento(req, res) {
     if (procDate < birthDate) {
       return res.status(400).json({
         message: "Data do procedimento não pode ser antes da data de nascimento",
-        dataNascimento: formatDateForInput(user.dataNascimento),
-        dataProcedimentoEnviada: formatDateForInput(dataProcedimento)
+        dataNascimento: birthDate.toISOString().split('T')[0],
+        dataProcedimento: procDate.toISOString().split('T')[0],
+        help: "A data do procedimento deve ser posterior a " + birthDate.toLocaleDateString('pt-BR')
       });
     }
 

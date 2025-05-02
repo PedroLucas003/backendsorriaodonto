@@ -3,12 +3,19 @@ const mongoose = require("mongoose");
 // Schema para os procedimentos
 const ProcedimentoSchema = new mongoose.Schema({
   dataProcedimento: { 
-    type: String,
-    required: true
+    type: Date,
+    required: [true, "Data do procedimento é obrigatória"],
+    validate: {
+      validator: function(v) {
+        return this.parent().dataNascimento ? v > this.parent().dataNascimento : true;
+      },
+      message: "Data do procedimento deve ser após a data de nascimento"
+    }
   },
   procedimento: {
     type: String,
-    required: true
+    required: [true, "Procedimento é obrigatório"],
+    trim: true
   },
   denteFace: {
     type: String,
@@ -36,11 +43,10 @@ const ProcedimentoSchema = new mongoose.Schema({
     immutable: true
   }
 }, { 
-  _id: true, // Isso é essencial
+  _id: true,
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
 });
-
 
 const UserSchema = new mongoose.Schema({
   // Dados pessoais
@@ -196,15 +202,14 @@ const UserSchema = new mongoose.Schema({
     trim: true
   },
   dataProcedimento: {
-    type: String,
-    required: true,
-
+    type: Date,
+    required: [true, "A data do procedimento é obrigatória"],
     validate: {
-      validator: function(value) {
+      validator: function(v) {
         if (!this.dataNascimento) return true;
-        return value > this.dataNascimento;
+        return v > this.dataNascimento;
       },
-      message: 'Data do procedimento principal deve ser após a data de nascimento'
+      message: 'Data do procedimento deve ser após a data de nascimento'
     }
   },
   modalidadePagamento: { 
@@ -249,6 +254,15 @@ const UserSchema = new mongoose.Schema({
     virtuals: true,
     transform: function(doc, ret) {
       delete ret.password;
+      // Formata datas para string ISO no JSON
+      if (ret.dataNascimento) ret.dataNascimento = ret.dataNascimento.toISOString();
+      if (ret.dataProcedimento) ret.dataProcedimento = ret.dataProcedimento.toISOString();
+      if (ret.historicoProcedimentos) {
+        ret.historicoProcedimentos = ret.historicoProcedimentos.map(p => ({
+          ...p,
+          dataProcedimento: p.dataProcedimento.toISOString()
+        }));
+      }
       return ret;
     }
   },
@@ -279,15 +293,15 @@ UserSchema.pre('save', function(next) {
   }
   
   // Validação de datas do procedimento principal
-  if (this.isModified('dataProcedimento') && this.dataNascimento && this.dataProcedimento < this.dataNascimento) {
-    throw new Error("Data do procedimento principal não pode ser antes da data de nascimento");
+  if (this.isModified('dataProcedimento') && this.dataNascimento && this.dataProcedimento <= this.dataNascimento) {
+    throw new Error("Data do procedimento principal deve ser após a data de nascimento");
   }
 
   // Validação dos procedimentos no histórico
   if (this.isModified('historicoProcedimentos') && this.dataNascimento) {
     this.historicoProcedimentos.forEach(proc => {
-      if (new Date(proc.dataProcedimento) < new Date(this.dataNascimento)) {
-        throw new Error(`Data do procedimento no histórico (${proc.dataProcedimento}) não pode ser antes da data de nascimento`);
+      if (proc.dataProcedimento <= this.dataNascimento) {
+        throw new Error(`Data do procedimento no histórico (${proc.dataProcedimento.toISOString()}) deve ser após a data de nascimento`);
       }
     });
   }
@@ -305,16 +319,23 @@ UserSchema.virtual('nomeFormatado').get(function() {
 // Virtual para idade
 UserSchema.virtual('idade').get(function() {
   if (!this.dataNascimento) return null;
-  const diff = Date.now() - this.dataNascimento.getTime();
-  const ageDate = new Date(diff);
-  return Math.abs(ageDate.getUTCFullYear() - 1970);
+  const today = new Date();
+  const birthDate = new Date(this.dataNascimento);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  
+  return age;
 });
 
 // Virtual para o último procedimento
 UserSchema.virtual('ultimoProcedimento').get(function() {
   if (this.historicoProcedimentos && this.historicoProcedimentos.length > 0) {
     return this.historicoProcedimentos.reduce((latest, current) => 
-      new Date(current.dataProcedimento) > new Date(latest.dataProcedimento) ? current : latest
+      current.dataProcedimento > latest.dataProcedimento ? current : latest
     );
   }
   return null;
@@ -322,6 +343,11 @@ UserSchema.virtual('ultimoProcedimento').get(function() {
 
 // Método para adicionar procedimento ao histórico
 UserSchema.methods.adicionarProcedimento = function(procedimentoData) {
+  // Valida se a data do procedimento é após o nascimento
+  if (procedimentoData.dataProcedimento <= this.dataNascimento) {
+    throw new Error("Data do procedimento deve ser após a data de nascimento");
+  }
+  
   this.historicoProcedimentos.push(procedimentoData);
   return this.save();
 };

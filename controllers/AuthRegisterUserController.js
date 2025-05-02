@@ -40,7 +40,7 @@ module.exports = class AuthRegisterUserController {
 
     const image = "default-profile.jpg";
 
-    // Validações atualizadas
+    // Validações
     const requiredFields = {
       nomeCompleto: "O nome completo é obrigatório!",
       email: "O email é obrigatório!",
@@ -61,12 +61,14 @@ module.exports = class AuthRegisterUserController {
       valor: "O valor é obrigatório!"
     };
 
+    // Validação de campos obrigatórios
     for (const [field, message] of Object.entries(requiredFields)) {
       if (!req.body[field]) {
         return res.status(422).json({ message });
       }
     }
 
+    // Validação de senha
     if (password !== confirmPassword) {
       return res.status(422).json({ message: "As senhas não são iguais!" });
     }
@@ -77,18 +79,37 @@ module.exports = class AuthRegisterUserController {
       return res.status(422).json({ message: "Já existe um usuário com esse CPF!" });
     }
 
+    // Validação de datas
+    const nascimentoDate = new Date(dataNascimento);
+    const procedimentoDate = new Date(dataProcedimento);
+    
+    if (isNaN(nascimentoDate.getTime()) || isNaN(procedimentoDate.getTime())) {
+      return res.status(422).json({ message: "Formato de data inválido! Use YYYY-MM-DD" });
+    }
+
+    if (procedimentoDate <= nascimentoDate) {
+      return res.status(422).json({ message: "Data do procedimento deve ser após a data de nascimento!" });
+    }
+
+    // Validação de valor monetário
+    const valorNumerico = parseFloat(valor.toString().replace(/[^\d,]/g, '').replace(',', '.'));
+    if (isNaN(valorNumerico)) {
+      return res.status(422).json({ message: "Valor inválido! Use números com vírgula ou ponto decimal" });
+    }
+
     // Criptografia da senha
     const salt = await bcrypt.genSalt(12);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // Criação do usuário com os novos campos
+    // Criação do usuário
     const user = new User({
       nomeCompleto,
       email,
       cpf,
       telefone,
       endereco,
-      dataNascimento,
+      dataNascimento: nascimentoDate, // Armazena como Date
+      dataProcedimento: procedimentoDate, // Armazena como Date
       image,
       password: passwordHash,
       detalhesDoencas,
@@ -112,44 +133,40 @@ module.exports = class AuthRegisterUserController {
       procedimento,
       denteFace,
       profissional,
-      dataProcedimento,
       modalidadePagamento,
-      valor
+      valor: valorNumerico // Armazena como número
     });
 
     try {
       await user.save();
+      
+      // Retorna resposta formatada
       res.status(201).json({ 
         message: "Usuário cadastrado com sucesso!",
         user: {
           _id: user._id,
           nomeCompleto: user.nomeCompleto,
           email: user.email,
+          dataNascimento: user.dataNascimento.toISOString().split('T')[0], // Retorna como YYYY-MM-DD
+          dataProcedimento: user.dataProcedimento.toISOString().split('T')[0], // Retorna como YYYY-MM-DD
           procedimento: user.procedimento,
-          denteFace: user.denteFace
+          denteFace: user.denteFace,
+          valor: user.valor
         }
       });
+      
     } catch (error) {
-      console.error(error);
+      console.error("Erro detalhado:", {
+        error: error,
+        stack: error.stack
+      });
+      
       res.status(500).json({ 
         message: "Ocorreu um erro ao cadastrar o usuário",
-        error: error.message 
+        error: process.env.NODE_ENV === 'development' ? error.message : null
       });
     }
-  }
-
-  static async getAllUsers(req, res) {
-    try {
-      const users = await User.find().select("-password");
-      res.json(users);
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ 
-        message: "Erro ao buscar usuários.",
-        error: error.message 
-      });
-    }
-  }
+}
 
   static async updateUser(req, res) {
     const { id } = req.params;
@@ -440,7 +457,7 @@ static async addProcedimento(req, res) {
     profissional
   } = req.body;
 
-  // Validação mais robusta
+  // Validação dos campos obrigatórios
   const requiredFields = {
     dataProcedimento: "Data do procedimento é obrigatória",
     procedimento: "Procedimento é obrigatório",
@@ -452,7 +469,7 @@ static async addProcedimento(req, res) {
 
   const errors = {};
   for (const [field, message] of Object.entries(requiredFields)) {
-    if (!req.body[field]) {
+    if (!req.body[field] || req.body[field].toString().trim() === "") {
       errors[field] = message;
     }
   }
@@ -465,62 +482,90 @@ static async addProcedimento(req, res) {
   }
 
   try {
+    // Busca o usuário
     const user = await User.findById(id);
     if (!user) {
       return res.status(404).json({ message: "Usuário não encontrado!" });
     }
 
-    // Validação de datas
-    const procDate = new Date(dataProcedimento);
+    // Usa a função auxiliar para formatar a data
+    const formattedDate = formatDateForInput(dataProcedimento);
+    const procDate = new Date(formattedDate);
+    
     if (isNaN(procDate.getTime())) {
-      return res.status(400).json({ message: "Data do procedimento inválida" });
+      return res.status(400).json({ 
+        message: "Data inválida! Use o formato DD/MM/YYYY ou YYYY-MM-DD",
+        receivedValue: dataProcedimento,
+        expectedFormats: ["DD/MM/YYYY", "YYYY-MM-DD"]
+      });
     }
 
+    // Validação contra data de nascimento
     const birthDate = new Date(user.dataNascimento);
     if (procDate < birthDate) {
       return res.status(400).json({
-        message: "Data do procedimento não pode ser antes da data de nascimento"
+        message: "Data do procedimento não pode ser antes da data de nascimento",
+        dataNascimento: formatDateForInput(user.dataNascimento),
+        dataProcedimentoEnviada: formatDateForInput(dataProcedimento)
       });
     }
 
-    // Formatação e validação do valor
-    const valorNumerico = parseFloat(
-      String(valor).replace(/[^\d,]/g, '').replace(',', '.')
-    );
-
-    if (isNaN(valorNumerico) || valorNumerico <= 0) {
+    // Usa a função auxiliar para converter o valor
+    const valorNumerico = convertValueToFloat(valor);
+    if (valorNumerico <= 0) {
       return res.status(400).json({ 
-        message: "Valor inválido. Deve ser um número maior que zero" 
+        message: "Valor deve ser maior que zero",
+        receivedValue: valor,
+        convertedValue: valorNumerico
       });
     }
 
+    // Criação do procedimento
     const novoProcedimento = {
-      dataProcedimento: procDate, // string pura, sem conversão
+      dataProcedimento: procDate,
       procedimento: procedimento.trim(),
       denteFace: denteFace.trim(),
       valor: valorNumerico,
       modalidadePagamento: modalidadePagamento.trim(),
       profissional: profissional.trim(),
-      createdAt: new Date() // aqui tudo bem usar Date
+      createdAt: new Date()
     };
-    
 
+    // Atualização do usuário
     const usuarioAtualizado = await User.findByIdAndUpdate(
       id,
       { $push: { historicoProcedimentos: novoProcedimento } },
       { new: true }
-    );
+    ).select('-password');
 
+    // Resposta formatada
     res.status(201).json({
       message: "Procedimento adicionado com sucesso!",
-      user: usuarioAtualizado
+      procedimento: {
+        ...novoProcedimento,
+        dataProcedimento: formatDateForInput(novoProcedimento.dataProcedimento),
+        valor: valorNumerico
+      },
+      user: {
+        _id: usuarioAtualizado._id,
+        nomeCompleto: usuarioAtualizado.nomeCompleto,
+        totalProcedimentos: usuarioAtualizado.historicoProcedimentos.length
+      }
     });
 
   } catch (error) {
-    console.error("Erro ao adicionar procedimento:", error);
+    console.error("Erro ao adicionar procedimento:", {
+      error: error.message,
+      stack: error.stack,
+      inputData: {
+        params: req.params,
+        body: req.body
+      }
+    });
+
     res.status(500).json({ 
       message: "Erro ao adicionar procedimento",
-      error: error.message 
+      error: process.env.NODE_ENV === 'development' ? error.message : null
     });
   }
 }

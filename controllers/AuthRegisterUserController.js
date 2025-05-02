@@ -38,6 +38,9 @@ module.exports = class AuthRegisterUserController {
       valor
     } = req.body;
 
+    console.log('Data Nascimento recebida:', dataNascimento, 'Tipo:', typeof dataNascimento);
+  console.log('Data Procedimento recebida:', dataProcedimento, 'Tipo:', typeof dataProcedimento);
+
     const image = "default-profile.jpg";
 
     // Validações
@@ -82,28 +85,34 @@ module.exports = class AuthRegisterUserController {
     // Validação de datas
     const nascimentoDate = new Date(dataNascimento);
     const procedimentoDate = new Date(dataProcedimento);
+
+    console.log('Nascimento Date:', nascimentoDate);
+    console.log('Procedimento Date:', procedimentoDate);
+    console.log('Comparação:', procedimentoDate > nascimentoDate);
     
+    // Verifica se as datas são válidas
     if (isNaN(nascimentoDate.getTime())) {
       return res.status(422).json({ 
-        message: "Data de nascimento inválida! Use o formato YYYY-MM-DD",
+        message: "Data de nascimento inválida!",
         received: dataNascimento
       });
     }
-
+    
     if (isNaN(procedimentoDate.getTime())) {
       return res.status(422).json({ 
-        message: "Data do procedimento inválida! Use o formato YYYY-MM-DD",
+        message: "Data do procedimento inválida!",
         received: dataProcedimento
       });
     }
-     // Verifica se data procedimento > data nascimento
-  if (procedimentoDate <= nascimentoDate) {
-    return res.status(422).json({ 
-      message: "Data do procedimento deve ser após a data de nascimento",
-      dataNascimento: nascimentoDate.toISOString().split('T')[0],
-      dataProcedimento: procedimentoDate.toISOString().split('T')[0]
-    });
-  }
+    
+    // Verifica se data procedimento > data nascimento (corrigindo a comparação)
+    if (procedimentoDate <= nascimentoDate) {
+      return res.status(422).json({ 
+        message: "Data do procedimento deve ser após a data de nascimento",
+        dataNascimento: nascimentoDate.toISOString().split('T')[0],
+        dataProcedimento: procedimentoDate.toISOString().split('T')[0]
+      });
+    }
 
     // Validação de valor monetário
     const valorNumerico = parseFloat(valor.toString().replace(/[^\d,]/g, '').replace(',', '.'));

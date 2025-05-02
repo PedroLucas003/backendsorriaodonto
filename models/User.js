@@ -2,14 +2,15 @@ const mongoose = require("mongoose");
 
 // Schema para os procedimentos
 const ProcedimentoSchema = new mongoose.Schema({
-  dataProcedimento: { 
+  dataProcedimento: {
     type: Date,
-    required: [true, "Data do procedimento é obrigatória"],
+    required: [true, "A data do procedimento é obrigatória"],
     validate: {
       validator: function(v) {
-        return this.parent().dataNascimento ? v > this.parent().dataNascimento : true;
+        if (!this.dataNascimento) return true;
+        return v > new Date(this.dataNascimento);
       },
-      message: "Data do procedimento deve ser após a data de nascimento"
+      message: 'Data do procedimento deve ser após a data de nascimento'
     }
   },
   procedimento: {

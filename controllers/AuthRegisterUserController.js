@@ -22,7 +22,8 @@ module.exports = class AuthRegisterUserController {
       denteFace,
       valor,
       modalidadePagamento,
-      profissional
+      profissional,
+      ...optionalFields
     } = req.body;
   
     // Validação apenas dos campos obrigatórios
@@ -36,15 +37,20 @@ module.exports = class AuthRegisterUserController {
       password: "A senha é obrigatória!",
       confirmPassword: "A confirmação de senha é obrigatória!",
     };
-  
+
     // Verifica campos obrigatórios
     for (const [field, message] of Object.entries(requiredFields)) {
       if (!req.body[field]) {
         return res.status(422).json({ message });
       }
     }
-  
-    // Cria objeto com dados obrigatórios + opcionais (se existirem)
+
+    // Verifica se as senhas coincidem
+    if (password !== confirmPassword) {
+      return res.status(422).json({ message: "As senhas não coincidem!" });
+    }
+
+    // Cria objeto com dados
     const userData = {
       nomeCompleto,
       email,
@@ -53,22 +59,26 @@ module.exports = class AuthRegisterUserController {
       endereco,
       dataNascimento: new Date(dataNascimento),
       password: await bcrypt.hash(password, 12),
-      // Campos opcionais (só inclui se existirem)
-      ...(detalhesDoencas && { detalhesDoencas }),
-      ...(procedimento && { procedimento }),
-      ...(denteFace && { denteFace }),
-      ...(valor && { valor: parseFloat(valor) }),
-      ...(modalidadePagamento && { modalidadePagamento }),
-      ...(profissional && { profissional }),
+      ...optionalFields // Inclui todos os campos opcionais
     };
-  
+
     try {
       const user = await User.create(userData);
       res.status(201).json({ message: "Usuário cadastrado com sucesso!", user });
     } catch (error) {
-      res.status(500).json({ message: "Erro ao cadastrar usuário", error });
+      if (error.code === 11000) {
+        return res.status(400).json({ 
+          message: "Erro ao cadastrar usuário",
+          error: "CPF ou E-mail já cadastrado"
+        });
+      }
+      res.status(500).json({ 
+        message: "Erro ao cadastrar usuário", 
+        error: error.message 
+      });
     }
   }
+
 
   static async updateUser(req, res) {
     const { id } = req.params;

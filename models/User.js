@@ -2,16 +2,15 @@ const mongoose = require("mongoose");
 
 // Schema para procedimentos
 const ProcedimentoSchema = new mongoose.Schema({
-  dataProcedimento: { type: Date, required: true },
-  procedimento: { type: String, required: true },
-  denteFace: { type: String, required: true },
-  profissional: { type: String, required: true },
+  dataProcedimento: { type: Date },
+  procedimento: { type: String },
+  denteFace: { type: String },
+  profissional: { type: String },
   modalidadePagamento: { 
     type: String, 
-    enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto"],
-    required: true 
+    enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto", ""]
   },
-  valor: { type: Number, required: true, min: 0 }
+  valor: { type: Number, min: 0 }
 }, { timestamps: true });
 
 // Schema principal do usuário

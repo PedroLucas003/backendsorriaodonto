@@ -16,7 +16,7 @@ module.exports = class AuthRegisterUserController {
       dataNascimento,
       password,
       confirmPassword,
-      // Campos opcionais (não obrigatórios)
+      // Campos opcionais
       detalhesDoencas,
       procedimento,
       denteFace,

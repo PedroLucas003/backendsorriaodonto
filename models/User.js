@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-// Schema para procedimentos (opcional)
+// Schema para procedimentos
 const ProcedimentoSchema = new mongoose.Schema({
   dataProcedimento: { type: Date, required: true },
   procedimento: { type: String, required: true },
@@ -16,7 +16,7 @@ const ProcedimentoSchema = new mongoose.Schema({
 
 // Schema principal do usuário
 const UserSchema = new mongoose.Schema({
-  // ✅ Dados Pessoais (OBRIGATÓRIOS)
+  // Dados Pessoais (OBRIGATÓRIOS)
   nomeCompleto: { 
     type: String, 
     required: [true, "O nome completo é obrigatório"],
@@ -66,23 +66,13 @@ const UserSchema = new mongoose.Schema({
     select: false 
   },
 
-  detalhesDoencas: { 
-    type: String, 
-    required: [true, "Os detalhes sobre doenças são obrigatórios"], // ❌ Remover
-    trim: true
-  },
-  quaisRemedios: { 
-    type: String, 
-    required: [true, "Os medicamentos são obrigatórios"], // ❌ Remover
-    trim: true
-  },
-  quaisMedicamentos: {
-    type: String,
-    required: [true, "Os medicamentos são obrigatórios"], // ❌ Remover
-    trim: true
-  },
+  // Campos de Saúde (OPCIONAIS)
+  detalhesDoencas: { type: String, trim: true },
+  quaisRemedios: { type: String, trim: true },
+  quaisMedicamentos: { type: String, trim: true },
+  quaisAnestesias: { type: String, trim: true },
 
-  // ❌ Hábitos (OPCIONAIS)
+  // Hábitos (OPCIONAIS)
   habitos: {
     frequenciaFumo: { 
       type: String,
@@ -96,20 +86,18 @@ const UserSchema = new mongoose.Schema({
     }
   },
 
-  // ❌ Exames (OPCIONAIS)
+  // Exames (OPCIONAIS)
   exames: {
-    exameSangue: { type: String, trim: true }, // Opcional
-    coagulacao: { type: String, trim: true },  // Opcional
-    cicatrizacao: { type: String, trim: true } // Opcional
+    exameSangue: { type: String, trim: true },
+    coagulacao: { type: String, trim: true },
+    cicatrizacao: { type: String, trim: true }
   },
 
-  // ❌ Histórico Médico (OPCIONAIS)
-  historicoCirurgia: { type: String, trim: true }, // Opcional
-  historicoOdontologico: { type: String, trim: true }, // Opcional
-
-  // ❌ Procedimento Principal (OPCIONAL)
-  procedimento: { type: String, trim: true }, // Opcional
-  denteFace: { type: String, trim: true },   // Opcional
+  // Histórico Médico (OPCIONAIS)
+  historicoCirurgia: { type: String, trim: true },
+  historicoOdontologico: { type: String, trim: true },
+  sangramentoPosProcedimento: { type: String, trim: true },
+  respiracao: { type: String, trim: true },
   peso: { 
     type: Number,
     validate: {
@@ -117,6 +105,10 @@ const UserSchema = new mongoose.Schema({
       message: "Peso deve ser positivo"
     }
   },
+
+  // Procedimento Principal (OPCIONAL)
+  procedimento: { type: String, trim: true },
+  denteFace: { type: String, trim: true },
   dataProcedimento: { 
     type: Date,
     validate: {
@@ -131,11 +123,14 @@ const UserSchema = new mongoose.Schema({
     type: String,
     enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto", ""]
   },
-  valor: { type: Number, min: 0 }, // Opcional
-  profissional: { type: String, trim: true }, // Opcional
+  valor: { type: Number, min: 0 },
+  profissional: { type: String, trim: true },
 
-  // ❌ Histórico de Procedimentos (OPCIONAL)
-  historicoProcedimentos: [ProcedimentoSchema], // Array opcional
+  // Histórico de Procedimentos (OPCIONAL)
+  historicoProcedimentos: [ProcedimentoSchema],
+
+  // Imagem (OPCIONAL)
+  image: { type: String },
 
   // Controle de acesso
   role: { 

@@ -8,70 +8,63 @@ const ProcedimentoSchema = new mongoose.Schema({
   profissional: { type: String },
   modalidadePagamento: { 
     type: String, 
-    enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto", ""]
+    enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto", ""],
+    default: ""
   },
   valor: { type: Number, min: 0 }
 }, { timestamps: true });
 
 // Schema principal do usuário
 const UserSchema = new mongoose.Schema({
-  // Dados Pessoais (OBRIGATÓRIOS)
+  // Dados Pessoais (todos opcionais agora)
   nomeCompleto: { 
     type: String, 
-    required: [true, "O nome completo é obrigatório"],
     trim: true 
   },
   email: { 
     type: String, 
-    required: [true, "O email é obrigatório"],
     unique: true,
     lowercase: true,
     match: [/^\w+([.-]?\w+)@\w+([.-]?\w+)(\.\w{2,3})+$/, "E-mail inválido"]
   },
   cpf: { 
     type: String, 
-    required: [true, "O CPF é obrigatório"],
     unique: true,
     validate: {
-      validator: (v) => /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(v),
+      validator: (v) => !v || /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(v),
       message: "CPF no formato inválido (000.000.000-00)"
     }
   },
   telefone: { 
-    type: String, 
-    required: [true, "O telefone é obrigatório"],
+    type: String,
     validate: {
-      validator: (v) => /^\(\d{2}\) \d{4,5}-\d{4}$/.test(v),
+      validator: (v) => !v || /^\(\d{2}\) \d{4,5}-\d{4}$/.test(v),
       message: "Telefone no formato inválido (00) 00000-0000"
     }
   },
   endereco: { 
     type: String, 
-    required: [true, "O endereço é obrigatório"],
     trim: true 
   },
   dataNascimento: { 
-    type: Date, 
-    required: [true, "A data de nascimento é obrigatória"],
+    type: Date,
     validate: {
-      validator: (v) => v < new Date(),
+      validator: (v) => !v || v < new Date(),
       message: "Data de nascimento deve ser no passado"
     }
   },
   password: { 
     type: String, 
-    required: [true, "A senha é obrigatória"],
-    minlength: [6, "A senha deve ter pelo menos 6 caracteres"],
     select: false 
   },
 
-  // Campos de Saúde (OPCIONAIS)
+  // Campos de Saúde
   detalhesDoencas: { type: String, trim: true },
   quaisRemedios: { type: String, trim: true },
   quaisMedicamentos: { type: String, trim: true },
   quaisAnestesias: { type: String, trim: true },
 
-  // Hábitos (OPCIONAIS)
+  // Hábitos
   habitos: {
     frequenciaFumo: { 
       type: String,
@@ -85,14 +78,14 @@ const UserSchema = new mongoose.Schema({
     }
   },
 
-  // Exames (OPCIONAIS)
+  // Exames
   exames: {
     exameSangue: { type: String, trim: true },
     coagulacao: { type: String, trim: true },
     cicatrizacao: { type: String, trim: true }
   },
 
-  // Histórico Médico (OPCIONAIS)
+  // Histórico Médico
   historicoCirurgia: { type: String, trim: true },
   historicoOdontologico: { type: String, trim: true },
   sangramentoPosProcedimento: { type: String, trim: true },
@@ -105,7 +98,7 @@ const UserSchema = new mongoose.Schema({
     }
   },
 
-  // Procedimento Principal (OPCIONAL)
+  // Procedimento Principal
   procedimento: { type: String, trim: true },
   denteFace: { type: String, trim: true },
   dataProcedimento: { 
@@ -120,15 +113,16 @@ const UserSchema = new mongoose.Schema({
   },
   modalidadePagamento: { 
     type: String,
-    enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto", ""]
+    enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto", ""],
+    default: ""
   },
   valor: { type: Number, min: 0 },
   profissional: { type: String, trim: true },
 
-  // Histórico de Procedimentos (OPCIONAL)
+  // Histórico de Procedimentos
   historicoProcedimentos: [ProcedimentoSchema],
 
-  // Imagem (OPCIONAL)
+  // Imagem
   image: { type: String },
 
   // Controle de acesso

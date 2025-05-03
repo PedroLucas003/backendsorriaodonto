@@ -66,10 +66,21 @@ const UserSchema = new mongoose.Schema({
     select: false 
   },
 
-  // ❌ Campos de Saúde (OPCIONAIS)
-  detalhesDoencas: { type: String, trim: true }, // Opcional
-  quaisRemedios: { type: String, trim: true },  // Opcional
-  alergiaMedicamento: { type: String, trim: true }, // Opcional
+  detalhesDoencas: { 
+    type: String, 
+    required: [true, "Os detalhes sobre doenças são obrigatórios"], // ❌ Remover
+    trim: true
+  },
+  quaisRemedios: { 
+    type: String, 
+    required: [true, "Os medicamentos são obrigatórios"], // ❌ Remover
+    trim: true
+  },
+  quaisMedicamentos: {
+    type: String,
+    required: [true, "Os medicamentos são obrigatórios"], // ❌ Remover
+    trim: true
+  },
 
   // ❌ Hábitos (OPCIONAIS)
   habitos: {

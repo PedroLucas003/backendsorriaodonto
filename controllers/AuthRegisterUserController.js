@@ -100,6 +100,26 @@ module.exports = class AuthRegisterUserController {
     }
   }
 
+  static async getAllUsers(req, res) {
+    try {
+      const { page = 1, limit = 10 } = req.query;
+      const users = await User.find({})
+        .select('-password')
+        .limit(limit * 1)
+        .skip((page - 1) * limit);
+        
+      const count = await User.countDocuments();
+      
+      res.json({
+        users,
+        totalPages: Math.ceil(count / limit),
+        currentPage: page
+      });
+    } catch (error) {
+      // ... tratamento de erro
+    }
+  }
+
   static async updateUser(req, res) {
     try {
       const { id } = req.params;

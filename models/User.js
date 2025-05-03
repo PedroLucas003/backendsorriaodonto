@@ -2,122 +2,168 @@ const mongoose = require("mongoose");
 
 // Schema para procedimentos
 const ProcedimentoSchema = new mongoose.Schema({
-  dataProcedimento: { type: Date },
-  procedimento: { type: String },
-  denteFace: { type: String },
-  profissional: { type: String },
+  procedimento: { type: String, required: true },
+  denteFace: { type: String, required: true },
+  profissional: { type: String, required: true },
   modalidadePagamento: { 
     type: String, 
-    enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto", ""],
-    default: ""
+    enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto"],
+    required: true
   },
-  valor: { type: Number, min: 0 }
+  valor: { type: Number, min: 0, required: true }
 }, { timestamps: true });
 
 // Schema principal do usuário
 const UserSchema = new mongoose.Schema({
-  // Dados Pessoais (todos opcionais agora)
+  // Dados Pessoais (campos obrigatórios)
   nomeCompleto: { 
     type: String, 
-    trim: true 
+    trim: true,
+    required: [true, "Nome completo é obrigatório"]
   },
   email: { 
     type: String, 
     unique: true,
     lowercase: true,
+    required: [true, "E-mail é obrigatório"],
     match: [/^\w+([.-]?\w+)@\w+([.-]?\w+)(\.\w{2,3})+$/, "E-mail inválido"]
   },
   cpf: { 
     type: String, 
     unique: true,
+    required: [true, "CPF é obrigatório"],
     validate: {
-      validator: (v) => !v || /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(v),
+      validator: (v) => /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(v),
       message: "CPF no formato inválido (000.000.000-00)"
     }
   },
   telefone: { 
     type: String,
+    required: [true, "Telefone é obrigatório"],
     validate: {
-      validator: (v) => !v || /^\(\d{2}\) \d{4,5}-\d{4}$/.test(v),
+      validator: (v) => /^\(\d{2}\) \d{4,5}-\d{4}$/.test(v),
       message: "Telefone no formato inválido (00) 00000-0000"
     }
   },
   endereco: { 
     type: String, 
-    trim: true 
-  },
-  dataNascimento: { 
-    type: Date,
-    validate: {
-      validator: (v) => !v || v < new Date(),
-      message: "Data de nascimento deve ser no passado"
-    }
+    trim: true,
+    required: [true, "Endereço é obrigatório"]
   },
   password: { 
     type: String, 
-    select: false 
+    select: false,
+    required: [true, "Senha é obrigatória"]
   },
 
-  // Campos de Saúde
-  detalhesDoencas: { type: String, trim: true },
-  quaisRemedios: { type: String, trim: true },
-  quaisMedicamentos: { type: String, trim: true },
-  quaisAnestesias: { type: String, trim: true },
+  // Campos de Saúde (obrigatórios)
+  detalhesDoencas: { 
+    type: String, 
+    trim: true,
+    required: [true, "Detalhes de doenças é obrigatório"]
+  },
+  quaisRemedios: { 
+    type: String, 
+    trim: true,
+    required: [true, "Quais remédios é obrigatório"]
+  },
+  quaisMedicamentos: { 
+    type: String, 
+    trim: true,
+    required: [true, "Quais medicamentos é obrigatório"]
+  },
+  quaisAnestesias: { 
+    type: String, 
+    trim: true,
+    required: [true, "Quais anestesias é obrigatório"]
+  },
 
-  // Hábitos
+  // Hábitos (obrigatórios)
   habitos: {
     frequenciaFumo: { 
       type: String,
-      enum: ["Nunca", "Ocasionalmente", "Frequentemente", "Diariamente", ""],
-      default: ""
+      enum: ["Nunca", "Ocasionalmente", "Frequentemente", "Diariamente"],
+      required: [true, "Frequência de fumo é obrigatória"]
     },
     frequenciaAlcool: { 
       type: String,
-      enum: ["Nunca", "Ocasionalmente", "Frequentemente", "Diariamente", ""],
-      default: ""
+      enum: ["Nunca", "Ocasionalmente", "Frequentemente", "Diariamente"],
+      required: [true, "Frequência de álcool é obrigatória"]
     }
   },
 
-  // Exames
+  // Exames (obrigatórios)
   exames: {
-    exameSangue: { type: String, trim: true },
-    coagulacao: { type: String, trim: true },
-    cicatrizacao: { type: String, trim: true }
+    exameSangue: { 
+      type: String, 
+      trim: true,
+      required: [true, "Exame de sangue é obrigatório"]
+    },
+    coagulacao: { 
+      type: String, 
+      trim: true,
+      required: [true, "Coagulação é obrigatório"]
+    },
+    cicatrizacao: { 
+      type: String, 
+      trim: true,
+      required: [true, "Cicatrização é obrigatório"]
+    }
   },
 
-  // Histórico Médico
-  historicoCirurgia: { type: String, trim: true },
-  historicoOdontologico: { type: String, trim: true },
-  sangramentoPosProcedimento: { type: String, trim: true },
-  respiracao: { type: String, trim: true },
+  // Histórico Médico (obrigatórios)
+  historicoCirurgia: { 
+    type: String, 
+    trim: true,
+    required: [true, "Histórico de cirurgia é obrigatório"]
+  },
+  historicoOdontologico: { 
+    type: String, 
+    trim: true,
+    required: [true, "Histórico odontológico é obrigatório"]
+  },
+  sangramentoPosProcedimento: { 
+    type: String, 
+    trim: true,
+    required: [true, "Sangramento pós-procedimento é obrigatório"]
+  },
+  respiracao: { 
+    type: String, 
+    trim: true,
+    required: [true, "Respiração é obrigatório"]
+  },
   peso: { 
     type: Number,
-    validate: {
-      validator: (v) => !v || v > 0,
-      message: "Peso deve ser positivo"
-    }
+    min: 0,
+    required: [true, "Peso é obrigatório"]
   },
 
-  // Procedimento Principal
-  procedimento: { type: String, trim: true },
-  denteFace: { type: String, trim: true },
-  dataProcedimento: { 
-    type: Date,
-    validate: {
-      validator: function(v) {
-        if (!v || !this.dataNascimento) return true;
-        return v > this.dataNascimento;
-      },
-      message: "Data do procedimento deve ser após o nascimento"
-    }
+  // Procedimento Principal (obrigatório)
+  procedimento: { 
+    type: String, 
+    trim: true,
+    required: [true, "Procedimento é obrigatório"]
+  },
+  denteFace: { 
+    type: String, 
+    trim: true,
+    required: [true, "Dente/Face é obrigatório"]
+  },
+  valor: { 
+    type: Number, 
+    min: 0,
+    required: [true, "Valor é obrigatório"]
   },
   modalidadePagamento: { 
     type: String,
-    enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto", ""],
-    default: ""
+    enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto"],
+    required: [true, "Modalidade de pagamento é obrigatória"]
   },
-  valor: { type: Number, min: 0 },
-  profissional: { type: String, trim: true },
+  profissional: { 
+    type: String, 
+    trim: true,
+    required: [true, "Profissional é obrigatório"]
+  },
 
   // Histórico de Procedimentos
   historicoProcedimentos: [ProcedimentoSchema],
@@ -144,19 +190,5 @@ const UserSchema = new mongoose.Schema({
 
 // Índices para performance
 UserSchema.index({ cpf: 1, email: 1 });
-UserSchema.index({ "historicoProcedimentos.dataProcedimento": 1 });
-
-// Virtuals (campos calculados)
-UserSchema.virtual("idade").get(function() {
-  if (!this.dataNascimento) return null;
-  const today = new Date();
-  const birthDate = new Date(this.dataNascimento);
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  return age;
-});
 
 module.exports = mongoose.model("User", UserSchema);

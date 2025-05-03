@@ -16,7 +16,7 @@ app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
 // Configuração CORS (CORREÇÃO APLICADA)
 const allowedOrigins = [
-  'https://frontvercel.vercel.app', // URL do seu frontend
+  'https://frontendsorriaodonto.vercel.app', // URL do seu frontend
   'https://sorriaodontofn.com',
   'http://localhost:4000'
 ];

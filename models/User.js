@@ -50,6 +50,17 @@ const UserSchema = new mongoose.Schema({
     trim: true,
     required: [true, "Endereço é obrigatório"]
   },
+
+  dataNascimento: {
+    type: Date,
+    required: [true, "Data de nascimento é obrigatória"],
+    validate: {
+      validator: function(v) {
+        return v < new Date();
+      },
+      message: "Data de nascimento deve ser no passado"
+    }
+  },
   password: { 
     type: String, 
     select: false,

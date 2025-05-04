@@ -329,6 +329,7 @@ module.exports = class AuthRegisterUserController {
         cpf: user.cpf,
         telefone: user.telefone,
         endereco: user.endereco,
+        dataNascimento: user.dataNascimento,
         detalhesDoencas: user.detalhesDoencas,
         quaisRemedios: user.quaisRemedios,
         quaisMedicamentos: user.quaisMedicamentos,

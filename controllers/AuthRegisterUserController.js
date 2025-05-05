@@ -340,6 +340,8 @@ module.exports = class AuthRegisterUserController {
         profissional: user.profissional || "",
         dataProcedimento: formatDateToDisplay(user.dataProcedimento),
         dataProcedimentoISO: user.dataProcedimento ? new Date(user.dataProcedimento).toISOString() : null,
+        dataNovoProcedimento: formatDateToDisplay(user.dataNovoProcedimento),
+        dataNovoProcedimentoISO: user.dataNovoProcedimento ? new Date(user.dataNovoProcedimento).toISOString() : null,
         isPrincipal: true,
         createdAt: formatDateToDisplay(user.createdAt),
         createdAtISO: user.createdAt ? new Date(user.createdAt).toISOString() : null
@@ -347,10 +349,14 @@ module.exports = class AuthRegisterUserController {
 
       const historicoProcedimentos = (user.historicoProcedimentos || []).map(p => {
         const procedimentoDate = p.dataProcedimento || p.createdAt;
+        const novoProcedimentoDate = p.dataNovoProcedimento || p.createdAt;
+        
         return {
           ...p.toObject(),
           dataProcedimento: formatDateToDisplay(procedimentoDate),
           dataProcedimentoISO: procedimentoDate ? new Date(procedimentoDate).toISOString() : null,
+          dataNovoProcedimento: formatDateToDisplay(novoProcedimentoDate),
+          dataNovoProcedimentoISO: novoProcedimentoDate ? new Date(novoProcedimentoDate).toISOString() : null,
           isPrincipal: false,
           createdAt: formatDateToDisplay(p.createdAt),
           createdAtISO: p.createdAt ? new Date(p.createdAt).toISOString() : null
@@ -360,8 +366,9 @@ module.exports = class AuthRegisterUserController {
       // Ordena todos os procedimentos por data (do mais recente para o mais antigo)
       const todosProcedimentos = [procedimentoPrincipal, ...historicoProcedimentos]
         .sort((a, b) => {
-          const dateA = safeFormatDate(a.dataProcedimentoISO || a.createdAtISO);
-          const dateB = safeFormatDate(b.dataProcedimentoISO || b.createdAtISO);
+          // Usa dataNovoProcedimento como prioridade, se existir
+          const dateA = safeFormatDate(a.dataNovoProcedimentoISO || a.dataProcedimentoISO || a.createdAtISO);
+          const dateB = safeFormatDate(b.dataNovoProcedimentoISO || b.dataProcedimentoISO || b.createdAtISO);
           return (dateB?.getTime() || 0) - (dateA?.getTime() || 0);
         });
 
@@ -422,7 +429,7 @@ module.exports = class AuthRegisterUserController {
     try {
       const { id } = req.params;
       const procedimentoData = req.body;
-
+  
       // Validação dos dados
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -434,7 +441,7 @@ module.exports = class AuthRegisterUserController {
           }, {})
         });
       }
-
+  
       const user = await User.findById(id);
       if (!user) {
         return res.status(404).json({ 
@@ -442,51 +449,55 @@ module.exports = class AuthRegisterUserController {
           error: "NOT_FOUND"
         });
       }
-
+  
       // Converter valor para número
       const valorNumerico = procedimentoData.valor ? 
         parseFloat(procedimentoData.valor.toString().replace(/[^\d,]/g, '').replace(',', '.')) : 0;
-
-      // Converter data para formato Date (com validação)
-      let dataProcedimento;
-      if (procedimentoData.dataProcedimento) {
-        // Assume que a data vem no formato DD/MM/AAAA do frontend
-        const [day, month, year] = procedimentoData.dataProcedimento.split('/');
-        dataProcedimento = new Date(`${year}-${month}-${day}`);
+  
+      // Função para converter e validar datas
+      const parseDate = (dateString, fieldName) => {
+        if (!dateString) return null;
         
-        if (isNaN(dataProcedimento.getTime())) {
-          return res.status(400).json({
-            message: "Erro de validação",
-            errors: { dataProcedimento: "Data do procedimento inválida" }
-          });
+        // Assume que a data vem no formato DD/MM/AAAA do frontend
+        const [day, month, year] = dateString.split('/');
+        const dateObj = new Date(`${year}-${month}-${day}`);
+        
+        if (isNaN(dateObj.getTime())) {
+          throw new Error(`Data ${fieldName} inválida`);
         }
-      } else {
-        dataProcedimento = new Date(); // Usa a data atual se não for fornecida
-      }
-
-      // Criar novo procedimento com data
+        
+        return dateObj;
+      };
+  
+      // Converter datas para formato Date
+      const dataProcedimento = parseDate(procedimentoData.dataProcedimento, "dataProcedimento");
+      const dataNovoProcedimento = parseDate(procedimentoData.dataNovoProcedimento, "dataNovoProcedimento");
+  
+      // Criar novo procedimento com datas
       const novoProcedimento = {
         procedimento: procedimentoData.procedimento,
         denteFace: procedimentoData.denteFace,
         valor: valorNumerico,
         modalidadePagamento: procedimentoData.modalidadePagamento,
         profissional: procedimentoData.profissional,
-        dataProcedimento: dataProcedimento // Adicionado
+        dataProcedimento: dataProcedimento,
+        dataNovoProcedimento: dataNovoProcedimento // Adicionado
       };
-
+  
       // Atualizar usuário
       const updatedUser = await User.findByIdAndUpdate(
         id,
         { $push: { historicoProcedimentos: novoProcedimento } },
         { new: true, runValidators: true }
       );
-
-      // Formatar a data para resposta
+  
+      // Formatar as datas para resposta
       const procedimentoResponse = {
         ...novoProcedimento,
-        dataProcedimento: dataProcedimento.toISOString() // Formato ISO para resposta
+        dataProcedimento: dataProcedimento.toISOString(),
+        dataNovoProcedimento: dataNovoProcedimento.toISOString() // Adicionado
       };
-
+  
       res.status(201).json({
         message: "Procedimento adicionado com sucesso!",
         procedimento: procedimentoResponse
@@ -503,7 +514,7 @@ module.exports = class AuthRegisterUserController {
       }
       
       res.status(500).json({ 
-        message: "Erro interno no servidor",
+        message: error.message || "Erro interno no servidor",
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }

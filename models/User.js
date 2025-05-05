@@ -5,6 +5,16 @@ const ProcedimentoSchema = new mongoose.Schema({
   procedimento: { type: String, required: true },
   denteFace: { type: String, required: true },
   profissional: { type: String, required: true },
+  dataProcedimento: { 
+    type: Date,
+    required: true,
+    validate: {
+      validator: function(v) {
+        return v instanceof Date && !isNaN(v.getTime());
+      },
+      message: "Data do procedimento inválida"
+    }
+  },
   modalidadePagamento: { 
     type: String, 
     enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto"],

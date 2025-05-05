@@ -180,9 +180,11 @@ const UserSchema = new mongoose.Schema({
   // No UserSchema
   dataProcedimento: {
     type: Date,
+    required: false
   },
   dataNovoProcedimento: { // Novo campo adicionado
     type: Date,
+    required: false
   },
 
   // Histórico de Procedimentos

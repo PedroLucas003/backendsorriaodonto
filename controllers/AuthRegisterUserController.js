@@ -102,21 +102,17 @@ module.exports = class AuthRegisterUserController {
 
   static async getAllUsers(req, res) {
     try {
-      const { page = 1, limit = 10 } = req.query;
       const users = await User.find({})
         .select('-password')
-        .limit(limit * 1)
-        .skip((page - 1) * limit);
-        
-      const count = await User.countDocuments();
+        .sort({ createdAt: -1 }); // Ordena por data de criação (mais novos primeiro)
       
-      res.json({
-        users,
-        totalPages: Math.ceil(count / limit),
-        currentPage: page
-      });
+      res.json(users); // Retorna array direto de usuários
     } catch (error) {
-      // ... tratamento de erro
+      console.error("Erro ao buscar usuários:", error);
+      res.status(500).json({ 
+        message: "Erro interno no servidor",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   }
 

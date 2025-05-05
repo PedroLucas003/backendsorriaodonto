@@ -12,7 +12,7 @@ const ProcedimentoSchema = new mongoose.Schema({
   },
   valor: { type: Number, min: 0, required: true },
   dataProcedimento: { type: Date, required: true },
-  // dataNovoProcedimento: { type: Date, required: true }
+  dataNovoProcedimento: { type: Date, required: true }
 }, { timestamps: true });
 
 // Schema principal do usuário
@@ -182,10 +182,17 @@ const UserSchema = new mongoose.Schema({
     type: Date,
     required: [true, "Data do procedimento é obrigatória"]
   },
-  // dataNovoProcedimento: { // Novo campo adicionado
-  //   type: Date,
-  //   required: [true, "Data do novo procedimento é obrigatória"]
-  // },
+  dataNovoProcedimento: { // ÚNICA ALTERAÇÃO (agora com validação igual a dataNascimento)
+    type: Date,
+    required: [true, "Data do novo procedimento é obrigatória"],
+    validate: {
+      validator: function(v) {
+        // Valida se é uma data futura (diferente da dataNascimento que valida se é passado)
+        return v instanceof Date && !isNaN(v.getTime()) && v > new Date();
+      },
+      message: "Data do novo procedimento deve ser futura"
+    }
+  },
 
   // Histórico de Procedimentos
   historicoProcedimentos: [ProcedimentoSchema],

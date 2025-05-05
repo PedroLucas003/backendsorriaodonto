@@ -219,7 +219,7 @@ const UserSchema = new mongoose.Schema({
     }
   }
 });
-
+  
 // Índices para performance
 UserSchema.index({ cpf: 1, email: 1 });
 

@@ -277,6 +277,7 @@ module.exports = class AuthRegisterUserController {
     try {
       const { cpf, password } = req.body;
 
+      // Validação dos campos obrigatórios
       if (!cpf || !password) {
         return res.status(422).json({ 
           message: "Erro de validação",
@@ -287,7 +288,10 @@ module.exports = class AuthRegisterUserController {
         });
       }
 
+      // Limpa o CPF (remove caracteres não numéricos)
       const cleanedCPF = cpf.replace(/\D/g, '');
+      
+      // Busca o usuário no banco de dados (incluindo a senha para validação)
       const user = await User.findOne({ cpf: cleanedCPF }).select('+password');
       
       if (!user) {
@@ -297,6 +301,7 @@ module.exports = class AuthRegisterUserController {
         });
       }
 
+      // Valida a senha
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
         return res.status(401).json({ 
@@ -309,7 +314,8 @@ module.exports = class AuthRegisterUserController {
       const safeFormatDate = (date) => {
         try {
           if (!date) return null;
-          const d = new Date(date);
+          // Converte para objeto Date se for string
+          const d = date instanceof Date ? date : new Date(date);
           return isNaN(d.getTime()) ? null : d;
         } catch (e) {
           console.error("Erro ao formatar data:", e);
@@ -317,74 +323,99 @@ module.exports = class AuthRegisterUserController {
         }
       };
 
-      // Ordenar procedimentos por data do procedimento (ou criação se não houver)
-      const todosProcedimentos = [
-        {
-          procedimento: user.procedimento || "",
-          denteFace: user.denteFace || "",
-          valor: user.valor || 0,
-          modalidadePagamento: user.modalidadePagamento || "",
-          profissional: user.profissional || "",
-          dataProcedimento: safeFormatDate(user.dataProcedimento), // Adicionado
-          isPrincipal: true,
-          createdAt: safeFormatDate(user.createdAt)
-        },
-        ...(user.historicoProcedimentos || []).map(p => ({ 
-          ...p.toObject(),
-          dataProcedimento: safeFormatDate(p.dataProcedimento) || safeFormatDate(p.createdAt), // Adicionado com fallback
-          isPrincipal: false,
-          createdAt: safeFormatDate(p.createdAt)
-        }))
-      ].sort((a, b) => {
-        // Usa dataProcedimento se existir, caso contrário usa createdAt
-        const dateA = a.dataProcedimento || a.createdAt;
-        const dateB = b.dataProcedimento || b.createdAt;
-        return (dateB?.getTime() || 0) - (dateA?.getTime() || 0); // Ordena do mais recente para o mais antigo
-      });
-
-      // Função para formatar data ISO para string legível
-      const formatDateToISOString = (date) => {
-        return date ? date.toISOString() : null;
+      // Função para formatar data no formato DD/MM/AAAA para exibição
+      const formatDateToDisplay = (date) => {
+        const d = safeFormatDate(date);
+        if (!d) return null;
+        
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        
+        return `${day}/${month}/${year}`;
       };
 
-      // Retornar os dados formatados
+      // Prepara os procedimentos (principal + histórico)
+      const procedimentoPrincipal = {
+        procedimento: user.procedimento || "",
+        denteFace: user.denteFace || "",
+        valor: user.valor || 0,
+        modalidadePagamento: user.modalidadePagamento || "",
+        profissional: user.profissional || "",
+        dataProcedimento: formatDateToDisplay(user.dataProcedimento),
+        dataProcedimentoISO: user.dataProcedimento ? new Date(user.dataProcedimento).toISOString() : null,
+        isPrincipal: true,
+        createdAt: formatDateToDisplay(user.createdAt),
+        createdAtISO: user.createdAt ? new Date(user.createdAt).toISOString() : null
+      };
+
+      const historicoProcedimentos = (user.historicoProcedimentos || []).map(p => {
+        const procedimentoDate = p.dataProcedimento || p.createdAt;
+        return {
+          ...p.toObject(),
+          dataProcedimento: formatDateToDisplay(procedimentoDate),
+          dataProcedimentoISO: procedimentoDate ? new Date(procedimentoDate).toISOString() : null,
+          isPrincipal: false,
+          createdAt: formatDateToDisplay(p.createdAt),
+          createdAtISO: p.createdAt ? new Date(p.createdAt).toISOString() : null
+        };
+      });
+
+      // Ordena todos os procedimentos por data (do mais recente para o mais antigo)
+      const todosProcedimentos = [procedimentoPrincipal, ...historicoProcedimentos]
+        .sort((a, b) => {
+          const dateA = safeFormatDate(a.dataProcedimentoISO || a.createdAtISO);
+          const dateB = safeFormatDate(b.dataProcedimentoISO || b.createdAtISO);
+          return (dateB?.getTime() || 0) - (dateA?.getTime() || 0);
+        });
+
+      // Prepara o objeto de retorno com todos os dados do prontuário
       const prontuario = {
-        nomeCompleto: user.nomeCompleto,
-        email: user.email,
-        cpf: user.cpf,
-        telefone: user.telefone,
-        endereco: user.endereco,
-        dataNascimento: formatDateToISOString(safeFormatDate(user.dataNascimento)),
-        detalhesDoencas: user.detalhesDoencas,
-        quaisRemedios: user.quaisRemedios,
-        quaisMedicamentos: user.quaisMedicamentos,
-        quaisAnestesias: user.quaisAnestesias,
-        habitos: {
-          frequenciaFumo: user.habitos?.frequenciaFumo,
-          frequenciaAlcool: user.habitos?.frequenciaAlcool
+        dadosPessoais: {
+          nomeCompleto: user.nomeCompleto,
+          email: user.email,
+          cpf: user.cpf,
+          telefone: user.telefone,
+          endereco: user.endereco,
+          dataNascimento: formatDateToDisplay(user.dataNascimento),
+          dataNascimentoISO: user.dataNascimento ? new Date(user.dataNascimento).toISOString() : null,
+          image: user.image
         },
-        historicoCirurgia: user.historicoCirurgia,
+        saude: {
+          detalhesDoencas: user.detalhesDoencas,
+          quaisRemedios: user.quaisRemedios,
+          quaisMedicamentos: user.quaisMedicamentos,
+          quaisAnestesias: user.quaisAnestesias,
+          habitos: {
+            frequenciaFumo: user.habitos?.frequenciaFumo || "Nunca",
+            frequenciaAlcool: user.habitos?.frequenciaAlcool || "Nunca"
+          },
+          historicoCirurgia: user.historicoCirurgia,
+          respiracao: user.respiracao,
+          peso: user.peso
+        },
         exames: {
           exameSangue: user.exames?.exameSangue,
           coagulacao: user.exames?.coagulacao,
-          cicatrizacao: user.exames?.cicatrizacao
+          cicatrizacao: user.exames?.cicatrizacao,
+          sangramentoPosProcedimento: user.sangramentoPosProcedimento
         },
-        historicoOdontologico: user.historicoOdontologico,
-        sangramentoPosProcedimento: user.sangramentoPosProcedimento,
-        respiracao: user.respiracao,
-        peso: user.peso,
-        procedimentos: todosProcedimentos.map(p => ({
-          ...p,
-          dataProcedimento: formatDateToISOString(p.dataProcedimento), // Formata para ISO
-          createdAt: formatDateToISOString(p.createdAt)
-        })),
-        image: user.image
+        odontologico: {
+          historicoOdontologico: user.historicoOdontologico
+        },
+        procedimentos: todosProcedimentos
       };
 
-      return res.status(200).json(prontuario);
+      return res.status(200).json({
+        success: true,
+        message: "Prontuário recuperado com sucesso",
+        data: prontuario
+      });
+
     } catch (error) {
       console.error("Erro ao buscar prontuário:", error);
-      res.status(500).json({ 
+      return res.status(500).json({ 
+        success: false,
         message: "Erro interno no servidor",
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });

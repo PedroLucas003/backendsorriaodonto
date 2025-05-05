@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-// Schema para procedimentos
+// Schema para procedimentos (atualizado)
 const ProcedimentoSchema = new mongoose.Schema({
   procedimento: { type: String, required: true },
   denteFace: { type: String, required: true },
@@ -11,11 +11,19 @@ const ProcedimentoSchema = new mongoose.Schema({
     required: true
   },
   valor: { type: Number, min: 0, required: true },
-  dataProcedimento: { type: Date, required: true },
-  dataNovoProcedimento: { type: Date, required: true }
+  dataNovoProcedimento: { 
+    type: Date, 
+    required: true,
+    validate: {
+      validator: function(v) {
+        return v instanceof Date && !isNaN(v.getTime()) && v > new Date();
+      },
+      message: "Data do novo procedimento deve ser futura"
+    }
+  }
 }, { timestamps: true });
 
-// Schema principal do usuário
+// Schema principal do usuário (atualizado)
 const UserSchema = new mongoose.Schema({
   // Dados Pessoais (campos obrigatórios)
   nomeCompleto: {
@@ -177,17 +185,12 @@ const UserSchema = new mongoose.Schema({
     trim: true,
     required: [true, "Profissional é obrigatório"]
   },
-  // No UserSchema
-  dataProcedimento: {
-    type: Date,
-    required: [true, "Data do procedimento é obrigatória"]
-  },
-  dataNovoProcedimento: { // ÚNICA ALTERAÇÃO (agora com validação igual a dataNascimento)
+  dataNovoProcedimento: {
     type: Date,
     required: [true, "Data do novo procedimento é obrigatória"],
     validate: {
       validator: function(v) {
-        // Valida se é uma data futura (diferente da dataNascimento que valida se é passado)
+        // Valida se é uma data futura
         return v instanceof Date && !isNaN(v.getTime()) && v > new Date();
       },
       message: "Data do novo procedimento deve ser futura"

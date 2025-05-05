@@ -523,7 +523,7 @@ module.exports = class AuthRegisterUserController {
           error: "INVALID_DATE"
         });
       }
-      
+           
       res.status(500).json({ 
         message: "Erro interno no servidor",
         error: process.env.NODE_ENV === 'development' ? error.message : undefined

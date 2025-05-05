@@ -305,22 +305,47 @@ module.exports = class AuthRegisterUserController {
         });
       }
 
-      // Ordenar procedimentos por data de criação
+      // Função para formatar datas de forma segura
+      const safeFormatDate = (date) => {
+        try {
+          if (!date) return null;
+          const d = new Date(date);
+          return isNaN(d.getTime()) ? null : d;
+        } catch (e) {
+          console.error("Erro ao formatar data:", e);
+          return null;
+        }
+      };
+
+      // Ordenar procedimentos por data do procedimento (ou criação se não houver)
       const todosProcedimentos = [
         {
-          procedimento: user.procedimento,
-          denteFace: user.denteFace,
-          valor: user.valor,
-          modalidadePagamento: user.modalidadePagamento,
-          profissional: user.profissional,
+          procedimento: user.procedimento || "",
+          denteFace: user.denteFace || "",
+          valor: user.valor || 0,
+          modalidadePagamento: user.modalidadePagamento || "",
+          profissional: user.profissional || "",
+          dataProcedimento: safeFormatDate(user.dataProcedimento), // Adicionado
           isPrincipal: true,
-          createdAt: user.createdAt
+          createdAt: safeFormatDate(user.createdAt)
         },
         ...(user.historicoProcedimentos || []).map(p => ({ 
-          ...p.toObject(), 
-          isPrincipal: false
+          ...p.toObject(),
+          dataProcedimento: safeFormatDate(p.dataProcedimento) || safeFormatDate(p.createdAt), // Adicionado com fallback
+          isPrincipal: false,
+          createdAt: safeFormatDate(p.createdAt)
         }))
-      ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      ].sort((a, b) => {
+        // Usa dataProcedimento se existir, caso contrário usa createdAt
+        const dateA = a.dataProcedimento || a.createdAt;
+        const dateB = b.dataProcedimento || b.createdAt;
+        return (dateB?.getTime() || 0) - (dateA?.getTime() || 0); // Ordena do mais recente para o mais antigo
+      });
+
+      // Função para formatar data ISO para string legível
+      const formatDateToISOString = (date) => {
+        return date ? date.toISOString() : null;
+      };
 
       // Retornar os dados formatados
       const prontuario = {
@@ -329,7 +354,7 @@ module.exports = class AuthRegisterUserController {
         cpf: user.cpf,
         telefone: user.telefone,
         endereco: user.endereco,
-        dataNascimento: user.dataNascimento,
+        dataNascimento: formatDateToISOString(safeFormatDate(user.dataNascimento)),
         detalhesDoencas: user.detalhesDoencas,
         quaisRemedios: user.quaisRemedios,
         quaisMedicamentos: user.quaisMedicamentos,
@@ -348,7 +373,11 @@ module.exports = class AuthRegisterUserController {
         sangramentoPosProcedimento: user.sangramentoPosProcedimento,
         respiracao: user.respiracao,
         peso: user.peso,
-        procedimentos: todosProcedimentos,
+        procedimentos: todosProcedimentos.map(p => ({
+          ...p,
+          dataProcedimento: formatDateToISOString(p.dataProcedimento), // Formata para ISO
+          createdAt: formatDateToISOString(p.createdAt)
+        })),
         image: user.image
       };
 
@@ -391,25 +420,49 @@ module.exports = class AuthRegisterUserController {
       const valorNumerico = procedimentoData.valor ? 
         parseFloat(procedimentoData.valor.toString().replace(/[^\d,]/g, '').replace(',', '.')) : 0;
 
-      // Criar novo procedimento
+      // Converter data para formato Date (com validação)
+      let dataProcedimento;
+      if (procedimentoData.dataProcedimento) {
+        // Assume que a data vem no formato DD/MM/AAAA do frontend
+        const [day, month, year] = procedimentoData.dataProcedimento.split('/');
+        dataProcedimento = new Date(`${year}-${month}-${day}`);
+        
+        if (isNaN(dataProcedimento.getTime())) {
+          return res.status(400).json({
+            message: "Erro de validação",
+            errors: { dataProcedimento: "Data do procedimento inválida" }
+          });
+        }
+      } else {
+        dataProcedimento = new Date(); // Usa a data atual se não for fornecida
+      }
+
+      // Criar novo procedimento com data
       const novoProcedimento = {
         procedimento: procedimentoData.procedimento,
         denteFace: procedimentoData.denteFace,
         valor: valorNumerico,
         modalidadePagamento: procedimentoData.modalidadePagamento,
-        profissional: procedimentoData.profissional
+        profissional: procedimentoData.profissional,
+        dataProcedimento: dataProcedimento // Adicionado
       };
 
       // Atualizar usuário
-      await User.findByIdAndUpdate(
+      const updatedUser = await User.findByIdAndUpdate(
         id,
         { $push: { historicoProcedimentos: novoProcedimento } },
         { new: true, runValidators: true }
       );
 
+      // Formatar a data para resposta
+      const procedimentoResponse = {
+        ...novoProcedimento,
+        dataProcedimento: dataProcedimento.toISOString() // Formato ISO para resposta
+      };
+
       res.status(201).json({
         message: "Procedimento adicionado com sucesso!",
-        procedimento: novoProcedimento
+        procedimento: procedimentoResponse
       });
     } catch (error) {
       console.error("Erro ao adicionar procedimento:", error);

@@ -1,4 +1,3 @@
-
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -43,11 +42,6 @@ module.exports = class AuthRegisterUserController {
       }
 
       const userData = req.body;
-
-      if (userData.dataProcedimento) {
-        const [day, month, year] = userData.dataProcedimento.split('/');
-        userData.dataProcedimento = new Date(`${year}-${month}-${day}`);
-      }
 
       // Valida senha
       if (userData.password !== userData.confirmPassword) {
@@ -433,104 +427,85 @@ module.exports = class AuthRegisterUserController {
       const { id } = req.params;
       const procedimentoData = req.body;
 
-      
-  
       // Validação dos dados
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({ 
           message: "Erro de validação",
-          errors: errors.array()
+          errors: errors.array().reduce((acc, err) => {
+            acc[err.param] = err.msg;
+            return acc;
+          }, {})
         });
       }
-  
-      // Função para validar e converter datas
-      const parseAndValidateDate = (dateString, fieldName) => {
-        if (!dateString) {
-          throw new Error(`${fieldName} é obrigatória`);
+
+      const user = await User.findById(id);
+      if (!user) {
+        return res.status(404).json({ 
+          message: "Usuário não encontrado!",
+          error: "NOT_FOUND"
+        });
+      }
+
+      // Converter valor para número
+      const valorNumerico = procedimentoData.valor ? 
+        parseFloat(procedimentoData.valor.toString().replace(/[^\d,]/g, '').replace(',', '.')) : 0;
+
+      // Converter data para formato Date (com validação)
+      let dataProcedimento;
+      if (procedimentoData.dataProcedimento) {
+        // Assume que a data vem no formato DD/MM/AAAA do frontend
+        const [day, month, year] = procedimentoData.dataProcedimento.split('/');
+        dataProcedimento = new Date(`${year}-${month}-${day}`);
+        
+        if (isNaN(dataProcedimento.getTime())) {
+          return res.status(400).json({
+            message: "Erro de validação",
+            errors: { dataProcedimento: "Data do procedimento inválida" }
+          });
         }
-  
-        // Se já for um objeto Date válido
-        if (dateString instanceof Date && !isNaN(dateString.getTime())) {
-          return dateString;
-        }
-  
-        // Se for string ISO
-        if (typeof dateString === 'string' && dateString.includes('T')) {
-          const date = new Date(dateString);
-          if (!isNaN(date.getTime())) return date;
-        }
-  
-        // Se for no formato DD/MM/AAAA (do frontend)
-        if (typeof dateString === 'string' && dateString.includes('/')) {
-          const [day, month, year] = dateString.split('/');
-          const date = new Date(`${year}-${month}-${day}`);
-          if (!isNaN(date.getTime())) return date;
-        }
-  
-        throw new Error(`Formato inválido para ${fieldName} (use DD/MM/AAAA)`);
-      };
-  
-      // Converter e validar datas
-      const dataProcedimento = parseAndValidateDate(procedimentoData.dataProcedimento, 'dataProcedimento');
-      const dataNovoProcedimento = parseAndValidateDate(procedimentoData.dataNovoProcedimento, 'dataNovoProcedimento');
-  
-      // Criar novo procedimento
+      } else {
+        dataProcedimento = new Date(); // Usa a data atual se não for fornecida
+      }
+
+      // Criar novo procedimento com data
       const novoProcedimento = {
         procedimento: procedimentoData.procedimento,
         denteFace: procedimentoData.denteFace,
-        valor: parseFloat(procedimentoData.valor),
+        valor: valorNumerico,
         modalidadePagamento: procedimentoData.modalidadePagamento,
         profissional: procedimentoData.profissional,
-        dataProcedimento,
-        dataNovoProcedimento,
-        createdAt: new Date()
+        dataProcedimento: dataProcedimento // Adicionado
       };
-  
+
       // Atualizar usuário
       const updatedUser = await User.findByIdAndUpdate(
         id,
         { $push: { historicoProcedimentos: novoProcedimento } },
-        { new: true }
-      ).select('-password');
-  
-      if (!updatedUser) {
-        return res.status(404).json({ 
-          message: "Usuário não encontrado",
-          error: "NOT_FOUND"
-        });
-      }
-  
-      // Formatar a resposta igual ao formato usado para dataNascimento
-      const formatDateResponse = (date) => {
-        if (!date) return null;
-        const d = new Date(date);
-        return {
-          iso: d.toISOString(),
-          formatted: d.toLocaleDateString('pt-BR')
-        };
-      };
-  
-      const responseData = {
+        { new: true, runValidators: true }
+      );
+
+      // Formatar a data para resposta
+      const procedimentoResponse = {
         ...novoProcedimento,
-        _id: novoProcedimento._id || new mongoose.Types.ObjectId(),
-        dataProcedimento: formatDateResponse(dataProcedimento),
-        dataNovoProcedimento: formatDateResponse(dataNovoProcedimento),
-        createdAt: formatDateResponse(novoProcedimento.createdAt)
+        dataProcedimento: dataProcedimento.toISOString() // Formato ISO para resposta
       };
-  
-      res.status(201).json(responseData);
-  
+
+      res.status(201).json({
+        message: "Procedimento adicionado com sucesso!",
+        procedimento: procedimentoResponse
+      });
     } catch (error) {
       console.error("Erro ao adicionar procedimento:", error);
       
-      if (error.message.includes('é obrigatória') || error.message.includes('Formato inválido')) {
+      if (error.name === 'ValidationError') {
+        const mongooseErrors = formatMongooseErrors(error);
         return res.status(400).json({
-          message: error.message,
-          error: "INVALID_DATE"
+          message: "Erro de validação",
+          errors: mongooseErrors || error.message
         });
       }
-           
+      
       res.status(500).json({ 
         message: "Erro interno no servidor",
         error: process.env.NODE_ENV === 'development' ? error.message : undefined

@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-// Schema para procedimentos (atualizado)
+// Schema para procedimentos
 const ProcedimentoSchema = new mongoose.Schema({
   procedimento: { type: String, required: true },
   denteFace: { type: String, required: true },
@@ -11,19 +11,11 @@ const ProcedimentoSchema = new mongoose.Schema({
     required: true
   },
   valor: { type: Number, min: 0, required: true },
-  dataNovoProcedimento: { 
-    type: Date, 
-    required: true,
-    validate: {
-      validator: function(v) {
-        return v instanceof Date && !isNaN(v.getTime()) && v > new Date();
-      },
-      message: "Data do novo procedimento deve ser futura"
-    }
-  }
+  dataProcedimento: { type: Date, required: true },
+  // dataNovoProcedimento: { type: Date, required: true }
 }, { timestamps: true });
 
-// Schema principal do usuário (atualizado)
+// Schema principal do usuário
 const UserSchema = new mongoose.Schema({
   // Dados Pessoais (campos obrigatórios)
   nomeCompleto: {
@@ -70,10 +62,6 @@ const UserSchema = new mongoose.Schema({
       },
       message: "Data de nascimento deve ser no passado"
     }
-  },
-  dataProcedimento: {
-    type: Date,
-    required: [true, "Data do procedimento é obrigatória"]
   },
   password: {
     type: String,
@@ -189,17 +177,15 @@ const UserSchema = new mongoose.Schema({
     trim: true,
     required: [true, "Profissional é obrigatório"]
   },
-  dataNovoProcedimento: {
+  // No UserSchema
+  dataProcedimento: {
     type: Date,
-    required: [true, "Data do novo procedimento é obrigatória"],
-    validate: {
-      validator: function(v) {
-        // Valida se é uma data futura
-        return v instanceof Date && !isNaN(v.getTime()) && v > new Date();
-      },
-      message: "Data do novo procedimento deve ser futura"
-    }
+    required: [true, "Data do procedimento é obrigatória"]
   },
+  // dataNovoProcedimento: { // Novo campo adicionado
+  //   type: Date,
+  //   required: [true, "Data do novo procedimento é obrigatória"]
+  // },
 
   // Histórico de Procedimentos
   historicoProcedimentos: [ProcedimentoSchema],
@@ -223,7 +209,7 @@ const UserSchema = new mongoose.Schema({
     }
   }
 });
-  
+
 // Índices para performance
 UserSchema.index({ cpf: 1, email: 1 });
 

@@ -1,5 +1,3 @@
-backend
-
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -8,7 +6,7 @@ const { validationResult } = require('express-validator');
 // Função para formatar erros do Mongoose
 const formatMongooseErrors = (error) => {
   if (!error.errors) return null;
-  
+
   const errors = {};
   Object.keys(error.errors).forEach(key => {
     errors[key] = error.errors[key].message;
@@ -19,12 +17,12 @@ const formatMongooseErrors = (error) => {
 // Função para validar dados antes de salvar
 const validateUserData = (userData) => {
   const errors = {};
-  
+
   // Validações adicionais podem ser adicionadas aqui
   if (userData.password && userData.password.length < 6) {
     errors.password = "A senha deve ter pelo menos 6 caracteres";
   }
-  
+
   return Object.keys(errors).length > 0 ? errors : null;
 };
 
@@ -34,7 +32,7 @@ module.exports = class AuthRegisterUserController {
       // Validação dos dados
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Erro de validação",
           errors: errors.array().reduce((acc, err) => {
             acc[err.param] = err.msg;
@@ -47,7 +45,7 @@ module.exports = class AuthRegisterUserController {
 
       // Valida senha
       if (userData.password !== userData.confirmPassword) {
-        return res.status(422).json({ 
+        return res.status(422).json({
           message: "Erro de validação",
           errors: { confirmPassword: "As senhas não coincidem!" }
         });
@@ -67,18 +65,18 @@ module.exports = class AuthRegisterUserController {
 
       // Cria usuário
       const user = await User.create(userData);
-      
+
       // Remove senha da resposta
       const userResponse = user.toObject();
       delete userResponse.password;
 
-      res.status(201).json({ 
-        message: "Usuário cadastrado com sucesso!", 
+      res.status(201).json({
+        message: "Usuário cadastrado com sucesso!",
         user: userResponse
       });
     } catch (error) {
       console.error("Erro ao cadastrar usuário:", error);
-      
+
       // Tratamento de erros do Mongoose
       if (error.name === 'ValidationError') {
         const mongooseErrors = formatMongooseErrors(error);
@@ -87,16 +85,16 @@ module.exports = class AuthRegisterUserController {
           errors: mongooseErrors || error.message
         });
       }
-      
+
       if (error.code === 11000) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Erro ao cadastrar usuário",
           error: "CPF ou E-mail já cadastrado"
         });
       }
-      
-      res.status(500).json({ 
-        message: "Erro interno no servidor", 
+
+      res.status(500).json({
+        message: "Erro interno no servidor",
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
@@ -109,9 +107,9 @@ module.exports = class AuthRegisterUserController {
         .select('-password')
         .limit(limit * 1)
         .skip((page - 1) * limit);
-        
+
       const count = await User.countDocuments();
-      
+
       res.json({
         users,
         totalPages: Math.ceil(count / limit),
@@ -130,7 +128,7 @@ module.exports = class AuthRegisterUserController {
       // Validação dos dados
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Erro de validação",
           errors: errors.array().reduce((acc, err) => {
             acc[err.param] = err.msg;
@@ -141,7 +139,7 @@ module.exports = class AuthRegisterUserController {
 
       const existingUser = await User.findById(id);
       if (!existingUser) {
-        return res.status(404).json({ 
+        return res.status(404).json({
           message: "Usuário não encontrado.",
           error: "NOT_FOUND"
         });
@@ -157,24 +155,66 @@ module.exports = class AuthRegisterUserController {
         userData.password = await bcrypt.hash(userData.password, 12);
       }
 
+      // Converter datas de string para Date se necessário
+      if (userData.dataProcedimento && typeof userData.dataProcedimento === 'string') {
+        const [day, month, year] = userData.dataProcedimento.split('/');
+        userData.dataProcedimento = new Date(`${year}-${month}-${day}`);
+      }
+
+      if (userData.dataNovoProcedimento && typeof userData.dataNovoProcedimento === 'string') {
+        const [day, month, year] = userData.dataNovoProcedimento.split('/');
+        userData.dataNovoProcedimento = new Date(`${year}-${month}-${day}`);
+      }
+
+      // Processar histórico de procedimentos se existir
+      if (userData.historicoProcedimentos && Array.isArray(userData.historicoProcedimentos)) {
+        userData.historicoProcedimentos = userData.historicoProcedimentos.map(proc => {
+          // Converter dataProcedimento
+          if (proc.dataProcedimento && typeof proc.dataProcedimento === 'string') {
+            const [day, month, year] = proc.dataProcedimento.split('/');
+            proc.dataProcedimento = new Date(`${year}-${month}-${day}`);
+          }
+
+          // Converter dataNovoProcedimento
+          if (proc.dataNovoProcedimento && typeof proc.dataNovoProcedimento === 'string') {
+            const [day, month, year] = proc.dataNovoProcedimento.split('/');
+            proc.dataNovoProcedimento = new Date(`${year}-${month}-${day}`);
+          }
+
+          return proc;
+        });
+      }
+
       // Atualizar o usuário
       const updatedUser = await User.findByIdAndUpdate(
         id,
         { $set: userData },
-        { 
-          new: true, 
+        {
+          new: true,
           lean: true,
           runValidators: true // Garante que as validações sejam executadas
         }
       ).select('-password');
 
+      // Formatar as datas para a resposta
+      const formattedResponse = {
+        ...updatedUser,
+        dataProcedimento: updatedUser.dataProcedimento ? new Date(updatedUser.dataProcedimento).toISOString() : null,
+        dataNovoProcedimento: updatedUser.dataNovoProcedimento ? new Date(updatedUser.dataNovoProcedimento).toISOString() : null,
+        historicoProcedimentos: updatedUser.historicoProcedimentos?.map(proc => ({
+          ...proc,
+          dataProcedimento: proc.dataProcedimento ? new Date(proc.dataProcedimento).toISOString() : null,
+          dataNovoProcedimento: proc.dataNovoProcedimento ? new Date(proc.dataNovoProcedimento).toISOString() : null
+        }))
+      };
+
       res.json({
         message: "Usuário atualizado com sucesso!",
-        user: updatedUser
+        user: formattedResponse
       });
     } catch (error) {
       console.error("Erro ao atualizar usuário:", error);
-      
+
       if (error.name === 'ValidationError') {
         const mongooseErrors = formatMongooseErrors(error);
         return res.status(400).json({
@@ -182,7 +222,14 @@ module.exports = class AuthRegisterUserController {
           errors: mongooseErrors || error.message
         });
       }
-      
+
+      if (error.name === 'CastError' && error.kind === 'date') {
+        return res.status(400).json({
+          message: "Erro de formatação de data",
+          error: "Formato de data inválido. Use DD/MM/AAAA"
+        });
+      }
+
       res.status(500).json({
         message: "Erro interno no servidor",
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -194,21 +241,21 @@ module.exports = class AuthRegisterUserController {
     try {
       const { id } = req.params;
       const deletedUser = await User.findByIdAndDelete(id);
-      
+
       if (!deletedUser) {
-        return res.status(404).json({ 
+        return res.status(404).json({
           message: "Usuário não encontrado.",
           error: "NOT_FOUND"
         });
       }
-      
-      res.json({ 
+
+      res.json({
         message: "Usuário excluído com sucesso!",
         userId: id
       });
     } catch (error) {
       console.error("Erro ao excluir usuário:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Erro interno no servidor",
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
@@ -218,9 +265,9 @@ module.exports = class AuthRegisterUserController {
   static async loginUser(req, res) {
     try {
       const { cpf, password } = req.body;
-      
+
       if (!cpf || !password) {
-        return res.status(422).json({ 
+        return res.status(422).json({
           message: "Erro de validação",
           errors: {
             cpf: !cpf ? "CPF é obrigatório" : undefined,
@@ -231,15 +278,15 @@ module.exports = class AuthRegisterUserController {
 
       const cpfLimpo = cpf.replace(/\D/g, '');
 
-      const user = await User.findOne({ 
+      const user = await User.findOne({
         $or: [
           { cpf: cpfLimpo },
           { cpf: cpfLimpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") }
         ]
       }).select('+password');
-      
+
       if (!user) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           message: "Credenciais inválidas",
           error: "INVALID_CREDENTIALS"
         });
@@ -247,7 +294,7 @@ module.exports = class AuthRegisterUserController {
 
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           message: "Credenciais inválidas",
           error: "INVALID_CREDENTIALS"
         });
@@ -281,7 +328,7 @@ module.exports = class AuthRegisterUserController {
 
       // Validação dos campos obrigatórios
       if (!cpf || !password) {
-        return res.status(422).json({ 
+        return res.status(422).json({
           message: "Erro de validação",
           errors: {
             cpf: !cpf ? "CPF é obrigatório" : undefined,
@@ -292,12 +339,12 @@ module.exports = class AuthRegisterUserController {
 
       // Limpa o CPF (remove caracteres não numéricos)
       const cleanedCPF = cpf.replace(/\D/g, '');
-      
+
       // Busca o usuário no banco de dados (incluindo a senha para validação)
       const user = await User.findOne({ cpf: cleanedCPF }).select('+password');
-      
+
       if (!user) {
-        return res.status(404).json({ 
+        return res.status(404).json({
           message: "Paciente não encontrado!",
           error: "NOT_FOUND"
         });
@@ -306,7 +353,7 @@ module.exports = class AuthRegisterUserController {
       // Valida a senha
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           message: "Credenciais inválidas",
           error: "INVALID_CREDENTIALS"
         });
@@ -329,11 +376,11 @@ module.exports = class AuthRegisterUserController {
       const formatDateToDisplay = (date) => {
         const d = safeFormatDate(date);
         if (!d) return null;
-        
+
         const day = String(d.getDate()).padStart(2, '0');
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const year = d.getFullYear();
-        
+
         return `${day}/${month}/${year}`;
       };
 
@@ -346,6 +393,8 @@ module.exports = class AuthRegisterUserController {
         profissional: user.profissional || "",
         dataProcedimento: formatDateToDisplay(user.dataProcedimento),
         dataProcedimentoISO: user.dataProcedimento ? new Date(user.dataProcedimento).toISOString() : null,
+        dataNovoProcedimento: formatDateToDisplay(user.dataNovoProcedimento),
+        dataNovoProcedimentoISO: user.dataNovoProcedimento ? new Date(user.dataNovoProcedimento).toISOString() : null,
         isPrincipal: true,
         createdAt: formatDateToDisplay(user.createdAt),
         createdAtISO: user.createdAt ? new Date(user.createdAt).toISOString() : null
@@ -353,10 +402,13 @@ module.exports = class AuthRegisterUserController {
 
       const historicoProcedimentos = (user.historicoProcedimentos || []).map(p => {
         const procedimentoDate = p.dataProcedimento || p.createdAt;
+        const novoProcedimentoDate = p.dataNovoProcedimento || p.createdAt;
         return {
           ...p.toObject(),
           dataProcedimento: formatDateToDisplay(procedimentoDate),
           dataProcedimentoISO: procedimentoDate ? new Date(procedimentoDate).toISOString() : null,
+          dataNovoProcedimento: formatDateToDisplay(novoProcedimentoDate),
+          dataNovoProcedimentoISO: novoProcedimentoDate ? new Date(novoProcedimentoDate).toISOString() : null,
           isPrincipal: false,
           createdAt: formatDateToDisplay(p.createdAt),
           createdAtISO: p.createdAt ? new Date(p.createdAt).toISOString() : null
@@ -416,7 +468,7 @@ module.exports = class AuthRegisterUserController {
 
     } catch (error) {
       console.error("Erro ao buscar prontuário:", error);
-      return res.status(500).json({ 
+      return res.status(500).json({
         success: false,
         message: "Erro interno no servidor",
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -432,7 +484,7 @@ module.exports = class AuthRegisterUserController {
       // Validação dos dados
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Erro de validação",
           errors: errors.array().reduce((acc, err) => {
             acc[err.param] = err.msg;
@@ -443,23 +495,22 @@ module.exports = class AuthRegisterUserController {
 
       const user = await User.findById(id);
       if (!user) {
-        return res.status(404).json({ 
+        return res.status(404).json({
           message: "Usuário não encontrado!",
           error: "NOT_FOUND"
         });
       }
 
       // Converter valor para número
-      const valorNumerico = procedimentoData.valor ? 
+      const valorNumerico = procedimentoData.valor ?
         parseFloat(procedimentoData.valor.toString().replace(/[^\d,]/g, '').replace(',', '.')) : 0;
 
-      // Converter data para formato Date (com validação)
+      // Converter dataProcedimento para formato Date
       let dataProcedimento;
       if (procedimentoData.dataProcedimento) {
-        // Assume que a data vem no formato DD/MM/AAAA do frontend
         const [day, month, year] = procedimentoData.dataProcedimento.split('/');
         dataProcedimento = new Date(`${year}-${month}-${day}`);
-        
+
         if (isNaN(dataProcedimento.getTime())) {
           return res.status(400).json({
             message: "Erro de validação",
@@ -467,17 +518,34 @@ module.exports = class AuthRegisterUserController {
           });
         }
       } else {
-        dataProcedimento = new Date(); // Usa a data atual se não for fornecida
+        dataProcedimento = new Date();
       }
 
-      // Criar novo procedimento com data
+      // Converter dataNovoProcedimento para formato Date
+      let dataNovoProcedimento;
+      if (procedimentoData.dataNovoProcedimento) {
+        const [day, month, year] = procedimentoData.dataNovoProcedimento.split('/');
+        dataNovoProcedimento = new Date(`${year}-${month}-${day}`);
+
+        if (isNaN(dataNovoProcedimento.getTime())) {
+          return res.status(400).json({
+            message: "Erro de validação",
+            errors: { dataNovoProcedimento: "Data do novo procedimento inválida" }
+          });
+        }
+      } else {
+        dataNovoProcedimento = new Date();
+      }
+
+      // Criar novo procedimento com ambas as datas
       const novoProcedimento = {
         procedimento: procedimentoData.procedimento,
         denteFace: procedimentoData.denteFace,
         valor: valorNumerico,
         modalidadePagamento: procedimentoData.modalidadePagamento,
         profissional: procedimentoData.profissional,
-        dataProcedimento: dataProcedimento // Adicionado
+        dataProcedimento: dataProcedimento,
+        dataNovoProcedimento: dataNovoProcedimento // Novo campo adicionado
       };
 
       // Atualizar usuário
@@ -487,10 +555,11 @@ module.exports = class AuthRegisterUserController {
         { new: true, runValidators: true }
       );
 
-      // Formatar a data para resposta
+      // Formatar as datas para resposta
       const procedimentoResponse = {
         ...novoProcedimento,
-        dataProcedimento: dataProcedimento.toISOString() // Formato ISO para resposta
+        dataProcedimento: dataProcedimento.toISOString(),
+        dataNovoProcedimento: dataNovoProcedimento.toISOString() // Novo campo adicionado
       };
 
       res.status(201).json({
@@ -499,7 +568,7 @@ module.exports = class AuthRegisterUserController {
       });
     } catch (error) {
       console.error("Erro ao adicionar procedimento:", error);
-      
+
       if (error.name === 'ValidationError') {
         const mongooseErrors = formatMongooseErrors(error);
         return res.status(400).json({
@@ -507,8 +576,8 @@ module.exports = class AuthRegisterUserController {
           errors: mongooseErrors || error.message
         });
       }
-      
-      res.status(500).json({ 
+
+      res.status(500).json({
         message: "Erro interno no servidor",
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });

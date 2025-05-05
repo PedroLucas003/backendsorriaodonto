@@ -71,6 +71,10 @@ const UserSchema = new mongoose.Schema({
       message: "Data de nascimento deve ser no passado"
     }
   },
+  dataProcedimento: {
+    type: Date,
+    required: [true, "Data do procedimento é obrigatória"]
+  },
   password: {
     type: String,
     select: false,

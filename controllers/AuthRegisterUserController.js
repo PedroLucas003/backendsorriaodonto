@@ -44,6 +44,11 @@ module.exports = class AuthRegisterUserController {
 
       const userData = req.body;
 
+      if (userData.dataProcedimento) {
+        const [day, month, year] = userData.dataProcedimento.split('/');
+        userData.dataProcedimento = new Date(`${year}-${month}-${day}`);
+      }
+
       // Valida senha
       if (userData.password !== userData.confirmPassword) {
         return res.status(422).json({ 
@@ -427,6 +432,8 @@ module.exports = class AuthRegisterUserController {
     try {
       const { id } = req.params;
       const procedimentoData = req.body;
+
+      
   
       // Validação dos dados
       const errors = validationResult(req);

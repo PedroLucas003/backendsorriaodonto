@@ -10,7 +10,8 @@ const ProcedimentoSchema = new mongoose.Schema({
     enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto"],
     required: true
   },
-  valor: { type: Number, min: 0, required: true }
+  valor: { type: Number, min: 0, required: true },
+  dataProcedimento: { type: Date, required: true }
 }, { timestamps: true });
 
 // Schema principal do usuário
@@ -175,6 +176,11 @@ const UserSchema = new mongoose.Schema({
     trim: true,
     required: [true, "Profissional é obrigatório"]
   },
+  // No UserSchema
+dataProcedimento: {
+  type: Date,
+  required: [true, "Data do procedimento é obrigatória"]
+},
 
   // Histórico de Procedimentos
   historicoProcedimentos: [ProcedimentoSchema],

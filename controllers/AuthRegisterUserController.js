@@ -320,16 +320,7 @@ module.exports = class AuthRegisterUserController {
           ...p.toObject(), 
           isPrincipal: false
         }))
-      ].sort((a, b) => {
-        try {
-          // Prioriza dataProcedimento, fallback para createdAt
-          const dateA = new Date(a.dataProcedimento || a.createdAt || new Date());
-          const dateB = new Date(b.dataProcedimento || b.createdAt || new Date());
-          return dateB - dateA;
-        } catch {
-          return 0;
-        }
-      });
+      ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
       // Retornar os dados formatados
       const prontuario = {
@@ -375,10 +366,6 @@ module.exports = class AuthRegisterUserController {
     try {
       const { id } = req.params;
       const procedimentoData = req.body;
-
-      if (procedimentoData.dataProcedimento) {
-        procedimentoData.dataProcedimento = new Date(procedimentoData.dataProcedimento);
-      }
 
       // Validação dos dados
       const errors = validationResult(req);

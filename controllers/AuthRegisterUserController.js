@@ -425,97 +425,139 @@ module.exports = class AuthRegisterUserController {
     }
   }
 
-  static async addProcedimento(req, res) {
-    try {
-      const { id } = req.params;
-      const procedimentoData = req.body;
-  
-      // Validação dos dados
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ 
-          message: "Erro de validação",
-          errors: errors.array().reduce((acc, err) => {
-            acc[err.param] = err.msg;
-            return acc;
-          }, {})
-        });
-      }
-  
-      const user = await User.findById(id);
-      if (!user) {
-        return res.status(404).json({ 
-          message: "Usuário não encontrado!",
-          error: "NOT_FOUND"
-        });
-      }
-  
-      // Converter valor para número
-      const valorNumerico = procedimentoData.valor ? 
-        parseFloat(procedimentoData.valor.toString().replace(/[^\d,]/g, '').replace(',', '.')) : 0;
-  
-      // Função para converter e validar datas
-      const parseDate = (dateString, fieldName) => {
-        if (!dateString) return null;
-        
-        // Assume que a data vem no formato DD/MM/AAAA do frontend
-        const [day, month, year] = dateString.split('/');
-        const dateObj = new Date(`${year}-${month}-${day}`);
-        
-        if (isNaN(dateObj.getTime())) {
-          throw new Error(`Data ${fieldName} inválida`);
-        }
-        
-        return dateObj;
-      };
-  
-      // Converter datas para formato Date
-      const dataProcedimento = parseDate(procedimentoData.dataProcedimento, "dataProcedimento");
-      const dataNovoProcedimento = parseDate(procedimentoData.dataNovoProcedimento, "dataNovoProcedimento");
-  
-      // Criar novo procedimento com datas
-      const novoProcedimento = {
-        procedimento: procedimentoData.procedimento,
-        denteFace: procedimentoData.denteFace,
-        valor: valorNumerico,
-        modalidadePagamento: procedimentoData.modalidadePagamento,
-        profissional: procedimentoData.profissional,
-        dataNovoProcedimento: dataNovoProcedimento // Adicionado
-      };
-  
-      // Atualizar usuário
-      const updatedUser = await User.findByIdAndUpdate(
-        id,
-        { $push: { historicoProcedimentos: novoProcedimento } },
-        { new: true, runValidators: true }
-      );
-  
-      // Formatar as datas para resposta
-      const procedimentoResponse = {
-        ...novoProcedimento,
-        dataProcedimento: dataProcedimento.toISOString(),
-        dataNovoProcedimento: dataNovoProcedimento.toISOString() // Adicionado
-      };
-  
-      res.status(201).json({
-        message: "Procedimento adicionado com sucesso!",
-        procedimento: procedimentoResponse
-      });
-    } catch (error) {
-      console.error("Erro ao adicionar procedimento:", error);
-      
-      if (error.name === 'ValidationError') {
-        const mongooseErrors = formatMongooseErrors(error);
-        return res.status(400).json({
-          message: "Erro de validação",
-          errors: mongooseErrors || error.message
-        });
-      }
-      
-      res.status(500).json({ 
-        message: error.message || "Erro interno no servidor",
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+ static async addProcedimento(req, res) {
+  try {
+    const { id } = req.params;
+    const { procedimento, denteFace, valor, modalidadePagamento, profissional, dataNovoProcedimento } = req.body;
+
+    // Validação dos campos obrigatórios
+    if (!procedimento || !denteFace || !valor || !modalidadePagamento || !profissional || !dataNovoProcedimento) {
+      return res.status(400).json({
+        message: "Todos os campos são obrigatórios"
       });
     }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ 
+        message: "Usuário não encontrado!",
+        error: "NOT_FOUND"
+      });
+    }
+
+    // Converter valor para número
+    const valorNumerico = parseFloat(valor.toString().replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+
+    // Converter data
+    const parseDate = (dateString) => {
+      const [day, month, year] = dateString.split('/');
+      return new Date(`${year}-${month}-${day}`);
+    };
+
+    const novoProcedimento = {
+      procedimento,
+      denteFace,
+      valor: valorNumerico,
+      modalidadePagamento,
+      profissional,
+      dataNovoProcedimento: parseDate(dataNovoProcedimento)
+    };
+
+    // Atualizar usuário
+    await User.findByIdAndUpdate(
+      id,
+      { $push: { historicoProcedimentos: novoProcedimento } },
+      { new: true }
+    );
+
+    res.status(201).json({
+      message: "Procedimento adicionado com sucesso!",
+      procedimento: {
+        ...novoProcedimento,
+        dataNovoProcedimento: novoProcedimento.dataNovoProcedimento.toISOString()
+      }
+    });
+  } catch (error) {
+    console.error("Erro ao adicionar procedimento:", error);
+    
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        message: "Erro de validação",
+        errors: formatMongooseErrors(error) || error.message
+      });
+    }
+    
+    res.status(500).json({ 
+      message: "Erro interno no servidor",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
+}static async addProcedimento(req, res) {
+  try {
+    const { id } = req.params;
+    const { procedimento, denteFace, valor, modalidadePagamento, profissional, dataNovoProcedimento } = req.body;
+
+    // Validação dos campos obrigatórios
+    if (!procedimento || !denteFace || !valor || !modalidadePagamento || !profissional || !dataNovoProcedimento) {
+      return res.status(400).json({
+        message: "Todos os campos são obrigatórios"
+      });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ 
+        message: "Usuário não encontrado!",
+        error: "NOT_FOUND"
+      });
+    }
+
+    // Converter valor para número
+    const valorNumerico = parseFloat(valor.toString().replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+
+    // Converter data
+    const parseDate = (dateString) => {
+      const [day, month, year] = dateString.split('/');
+      return new Date(`${year}-${month}-${day}`);
+    };
+
+    const novoProcedimento = {
+      procedimento,
+      denteFace,
+      valor: valorNumerico,
+      modalidadePagamento,
+      profissional,
+      dataNovoProcedimento: parseDate(dataNovoProcedimento)
+    };
+
+    // Atualizar usuário
+    await User.findByIdAndUpdate(
+      id,
+      { $push: { historicoProcedimentos: novoProcedimento } },
+      { new: true }
+    );
+
+    res.status(201).json({
+      message: "Procedimento adicionado com sucesso!",
+      procedimento: {
+        ...novoProcedimento,
+        dataNovoProcedimento: novoProcedimento.dataNovoProcedimento.toISOString()
+      }
+    });
+  } catch (error) {
+    console.error("Erro ao adicionar procedimento:", error);
+    
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        message: "Erro de validação",
+        errors: formatMongooseErrors(error) || error.message
+      });
+    }
+    
+    res.status(500).json({ 
+      message: "Erro interno no servidor",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+}
 };

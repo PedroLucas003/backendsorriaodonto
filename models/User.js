@@ -1,7 +1,3 @@
-
-const mongoose = require("mongoose");
-
-// Schema para procedimentos
 const ProcedimentoSchema = new mongoose.Schema({
   procedimento: { type: String, required: true },
   denteFace: { type: String, required: true },
@@ -12,8 +8,8 @@ const ProcedimentoSchema = new mongoose.Schema({
     required: true
   },
   valor: { type: Number, min: 0, required: true },
-  dataProcedimento: { type: Date, required: false },
-  // dataNovoProcedimento: { type: Date, required: true }
+  // REMOVA dataProcedimento ou torne opcional
+  dataNovoProcedimento: { type: Date, required: true } // Mantenha apenas este
 }, { timestamps: true });
 
 // Schema principal do usuário

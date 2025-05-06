@@ -102,17 +102,21 @@ module.exports = class AuthRegisterUserController {
 
   static async getAllUsers(req, res) {
     try {
+      const { page = 1, limit = 10 } = req.query;
       const users = await User.find({})
         .select('-password')
-        .sort({ createdAt: -1 }); // Ordena por data de criação (mais novos primeiro)
+        .limit(limit * 1)
+        .skip((page - 1) * limit);
+        
+      const count = await User.countDocuments();
       
-      res.json(users); // Retorna array direto de usuários
-    } catch (error) {
-      console.error("Erro ao buscar usuários:", error);
-      res.status(500).json({ 
-        message: "Erro interno no servidor",
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      res.json({
+        users,
+        totalPages: Math.ceil(count / limit),
+        currentPage: page
       });
+    } catch (error) {
+      // ... tratamento de erro
     }
   }
 
@@ -340,8 +344,6 @@ module.exports = class AuthRegisterUserController {
         profissional: user.profissional || "",
         dataProcedimento: formatDateToDisplay(user.dataProcedimento),
         dataProcedimentoISO: user.dataProcedimento ? new Date(user.dataProcedimento).toISOString() : null,
-        dataNovoProcedimento: formatDateToDisplay(user.dataNovoProcedimento),
-        dataNovoProcedimentoISO: user.dataNovoProcedimento ? new Date(user.dataNovoProcedimento).toISOString() : null,
         isPrincipal: true,
         createdAt: formatDateToDisplay(user.createdAt),
         createdAtISO: user.createdAt ? new Date(user.createdAt).toISOString() : null
@@ -349,14 +351,10 @@ module.exports = class AuthRegisterUserController {
 
       const historicoProcedimentos = (user.historicoProcedimentos || []).map(p => {
         const procedimentoDate = p.dataProcedimento || p.createdAt;
-        const novoProcedimentoDate = p.dataNovoProcedimento || p.createdAt;
-        
         return {
           ...p.toObject(),
           dataProcedimento: formatDateToDisplay(procedimentoDate),
           dataProcedimentoISO: procedimentoDate ? new Date(procedimentoDate).toISOString() : null,
-          dataNovoProcedimento: formatDateToDisplay(novoProcedimentoDate),
-          dataNovoProcedimentoISO: novoProcedimentoDate ? new Date(novoProcedimentoDate).toISOString() : null,
           isPrincipal: false,
           createdAt: formatDateToDisplay(p.createdAt),
           createdAtISO: p.createdAt ? new Date(p.createdAt).toISOString() : null
@@ -366,9 +364,8 @@ module.exports = class AuthRegisterUserController {
       // Ordena todos os procedimentos por data (do mais recente para o mais antigo)
       const todosProcedimentos = [procedimentoPrincipal, ...historicoProcedimentos]
         .sort((a, b) => {
-          // Usa dataNovoProcedimento como prioridade, se existir
-          const dateA = safeFormatDate(a.dataNovoProcedimentoISO || a.dataProcedimentoISO || a.createdAtISO);
-          const dateB = safeFormatDate(b.dataNovoProcedimentoISO || b.dataProcedimentoISO || b.createdAtISO);
+          const dateA = safeFormatDate(a.dataProcedimentoISO || a.createdAtISO);
+          const dateB = safeFormatDate(b.dataProcedimentoISO || b.createdAtISO);
           return (dateB?.getTime() || 0) - (dateA?.getTime() || 0);
         });
 
@@ -429,10 +426,19 @@ module.exports = class AuthRegisterUserController {
     try {
       const { id } = req.params;
       const procedimentoData = req.body;
-  
-      // Remove a validação inicial do express-validator
-      // if (!errors.isEmpty()) {...}
-  
+
+      // Validação dos dados
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ 
+          message: "Erro de validação",
+          errors: errors.array().reduce((acc, err) => {
+            acc[err.param] = err.msg;
+            return acc;
+          }, {})
+        });
+      }
+
       const user = await User.findById(id);
       if (!user) {
         return res.status(404).json({ 
@@ -440,64 +446,68 @@ module.exports = class AuthRegisterUserController {
           error: "NOT_FOUND"
         });
       }
-  
-      // Converte valor monetário (mantida essa validação)
+
+      // Converter valor para número
       const valorNumerico = procedimentoData.valor ? 
         parseFloat(procedimentoData.valor.toString().replace(/[^\d,]/g, '').replace(',', '.')) : 0;
-  
-      // Função que aceita QUALQUER formato de data (ou vazio)
-      const parseDate = (dateString) => {
-        if (!dateString) return null;
+
+      // Converter data para formato Date (com validação)
+      let dataProcedimento;
+      if (procedimentoData.dataProcedimento) {
+        // Assume que a data vem no formato DD/MM/AAAA do frontend
+        const [day, month, year] = procedimentoData.dataProcedimento.split('/');
+        dataProcedimento = new Date(`${year}-${month}-${day}`);
         
-        try {
-          // Tenta converter de DD/MM/AAAA
-          if (dateString.includes('/')) {
-            const [day, month, year] = dateString.split('/');
-            return new Date(`${year}-${month}-${day}`);
-          }
-          
-          // Tenta converter diretamente (para caso já venha em formato ISO)
-          return new Date(dateString);
-        } catch {
-          // Se falhar, retorna null (não impede o cadastro)
-          return null;
+        if (isNaN(dataProcedimento.getTime())) {
+          return res.status(400).json({
+            message: "Erro de validação",
+            errors: { dataProcedimento: "Data do procedimento inválida" }
+          });
         }
-      };
-  
-      // Cria procedimento - campos de data podem ser null
+      } else {
+        dataProcedimento = new Date(); // Usa a data atual se não for fornecida
+      }
+
+      // Criar novo procedimento com data
       const novoProcedimento = {
         procedimento: procedimentoData.procedimento,
         denteFace: procedimentoData.denteFace,
         valor: valorNumerico,
         modalidadePagamento: procedimentoData.modalidadePagamento,
         profissional: procedimentoData.profissional,
-        dataProcedimento: parseDate(procedimentoData.dataProcedimento), // Pode ser null
-        dataNovoProcedimento: parseDate(procedimentoData.dataNovoProcedimento) // Pode ser null
+        dataProcedimento: dataProcedimento // Adicionado
       };
-  
-      // Atualiza sem validações rígidas (remove runValidators)
+
+      // Atualizar usuário
       const updatedUser = await User.findByIdAndUpdate(
         id,
         { $push: { historicoProcedimentos: novoProcedimento } },
-        { new: true }
+        { new: true, runValidators: true }
       );
-  
-      // Formata resposta (aceitando valores null)
+
+      // Formatar a data para resposta
       const procedimentoResponse = {
         ...novoProcedimento,
-        dataProcedimento: novoProcedimento.dataProcedimento?.toISOString() || null,
-        dataNovoProcedimento: novoProcedimento.dataNovoProcedimento?.toISOString() || null
+        dataProcedimento: dataProcedimento.toISOString() // Formato ISO para resposta
       };
-  
+
       res.status(201).json({
         message: "Procedimento adicionado com sucesso!",
         procedimento: procedimentoResponse
       });
-  
     } catch (error) {
       console.error("Erro ao adicionar procedimento:", error);
+      
+      if (error.name === 'ValidationError') {
+        const mongooseErrors = formatMongooseErrors(error);
+        return res.status(400).json({
+          message: "Erro de validação",
+          errors: mongooseErrors || error.message
+        });
+      }
+      
       res.status(500).json({ 
-        message: "Erro ao adicionar procedimento",
+        message: "Erro interno no servidor",
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }

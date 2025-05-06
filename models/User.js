@@ -13,7 +13,7 @@ const ProcedimentoSchema = new mongoose.Schema({
   },
   valor: { type: Number, min: 0, required: true },
   dataProcedimento: { type: Date, required: false },
-  // dataNovoProcedimento: { type: Date, required: true }
+  dataNovoProcedimento: { type: Date, required: true }
 }, { timestamps: true });
 
 // Schema principal do usuário

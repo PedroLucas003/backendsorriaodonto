@@ -430,91 +430,60 @@ module.exports = class AuthRegisterUserController {
       const { id } = req.params;
       const procedimentoData = req.body;
   
-      // Validação dos dados
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ 
-          message: "Erro de validação",
-          errors: errors.array().reduce((acc, err) => {
-            acc[err.param] = err.msg;
-            return acc;
-          }, {})
-        });
-      }
-  
-      const user = await User.findById(id);
-      if (!user) {
-        return res.status(404).json({ 
-          message: "Usuário não encontrado!",
-          error: "NOT_FOUND"
-        });
-      }
-  
-      // Converter valor para número
-      const valorNumerico = procedimentoData.valor ? 
-        parseFloat(procedimentoData.valor.toString().replace(/[^\d,]/g, '').replace(',', '.')) : 0;
-  
-      // Função para converter e validar datas
-      const parseDate = (dateString, fieldName) => {
+      // Função de parse igual à usada para dataNascimento
+      const parseDate = (dateString) => {
         if (!dateString) return null;
         
-        // Assume que a data vem no formato DD/MM/AAAA do frontend
-        const [day, month, year] = dateString.split('/');
-        const dateObj = new Date(`${year}-${month}-${day}`);
-        
-        if (isNaN(dateObj.getTime())) {
-          throw new Error(`Data ${fieldName} inválida`);
+        // Se já estiver no formato ISO (vindo do frontend)
+        if (dateString.includes('T')) {
+          const date = new Date(dateString);
+          if (!isNaN(date.getTime())) return date;
         }
         
-        return dateObj;
+        // Se for formato DD/MM/AAAA (fallback)
+        if (dateString.includes('/')) {
+          const [day, month, year] = dateString.split('/');
+          const date = new Date(`${year}-${month}-${day}`);
+          if (!isNaN(date.getTime())) return date;
+        }
+        
+        throw new Error("Formato de data inválido");
       };
   
-      // Converter datas para formato Date
-      const dataProcedimento = parseDate(procedimentoData.dataProcedimento, "dataProcedimento");
-      const dataNovoProcedimento = parseDate(procedimentoData.dataNovoProcedimento, "dataNovoProcedimento");
+      // Converter dataNovoProcedimento
+      const dataNovoProcedimento = parseDate(procedimentoData.dataNovoProcedimento);
+      if (!dataNovoProcedimento) {
+        return res.status(400).json({ 
+          message: "Data dataNovoProcedimento inválida",
+          error: "INVALID_DATE"
+        });
+      }
   
-      // Criar novo procedimento com datas
+      // Restante do código do controller...
       const novoProcedimento = {
         procedimento: procedimentoData.procedimento,
         denteFace: procedimentoData.denteFace,
-        valor: valorNumerico,
+        valor: procedimentoData.valor,
         modalidadePagamento: procedimentoData.modalidadePagamento,
         profissional: procedimentoData.profissional,
-        dataNovoProcedimento: dataNovoProcedimento // Adicionado
+        dataNovoProcedimento: dataNovoProcedimento
       };
   
-      // Atualizar usuário
       const updatedUser = await User.findByIdAndUpdate(
         id,
         { $push: { historicoProcedimentos: novoProcedimento } },
-        { new: true, runValidators: true }
+        { new: true }
       );
-  
-      // Formatar as datas para resposta
-      const procedimentoResponse = {
-        ...novoProcedimento,
-        dataProcedimento: dataProcedimento.toISOString(),
-        dataNovoProcedimento: dataNovoProcedimento.toISOString() // Adicionado
-      };
   
       res.status(201).json({
         message: "Procedimento adicionado com sucesso!",
-        procedimento: procedimentoResponse
+        procedimento: novoProcedimento
       });
+  
     } catch (error) {
       console.error("Erro ao adicionar procedimento:", error);
-      
-      if (error.name === 'ValidationError') {
-        const mongooseErrors = formatMongooseErrors(error);
-        return res.status(400).json({
-          message: "Erro de validação",
-          errors: mongooseErrors || error.message
-        });
-      }
-      
-      res.status(500).json({ 
-        message: error.message || "Erro interno no servidor",
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      res.status(500).json({
+        message: error.message || "Erro interno no servidor"
       });
     }
   }

@@ -1,3 +1,4 @@
+
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -430,23 +431,36 @@ module.exports = class AuthRegisterUserController {
       const { id } = req.params;
       const procedimentoData = req.body;
   
-      // Validação básica
-      if (!procedimentoData.dataNovoProcedimento) {
+      // Função de parse igual à usada para dataNascimento
+      const parseDate = (dateString) => {
+        if (!dateString) return null;
+        
+        // Se já estiver no formato ISO (vindo do frontend)
+        if (dateString.includes('T')) {
+          const date = new Date(dateString);
+          if (!isNaN(date.getTime())) return date;
+        }
+        
+        // Se for formato DD/MM/AAAA (fallback)
+        if (dateString.includes('/')) {
+          const [day, month, year] = dateString.split('/');
+          const date = new Date(`${year}-${month}-${day}`);
+          if (!isNaN(date.getTime())) return date;
+        }
+        
+        throw new Error("Formato de data inválido");
+      };
+  
+      // Converter dataNovoProcedimento
+      const dataNovoProcedimento = parseDate(procedimentoData.dataNovoProcedimento);
+      if (!dataNovoProcedimento) {
         return res.status(400).json({ 
-          message: "Data do procedimento é obrigatória",
+          message: "Data dataNovoProcedimento inválida",
           error: "INVALID_DATE"
         });
       }
   
-      // Aceita tanto ISO string quanto objeto Date
-      const dataNovoProcedimento = new Date(procedimentoData.dataNovoProcedimento);
-      if (isNaN(dataNovoProcedimento.getTime())) {
-        return res.status(400).json({ 
-          message: "Data inválida",
-          error: "INVALID_DATE"
-        });
-      }
-  
+      // Restante do código do controller...
       const novoProcedimento = {
         procedimento: procedimentoData.procedimento,
         denteFace: procedimentoData.denteFace,
@@ -473,5 +487,5 @@ module.exports = class AuthRegisterUserController {
         message: error.message || "Erro interno no servidor"
       });
     }
-}
+  }
 };

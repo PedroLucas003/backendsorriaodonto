@@ -480,7 +480,6 @@ module.exports = class AuthRegisterUserController {
         valor: valorNumerico,
         modalidadePagamento: procedimentoData.modalidadePagamento,
         profissional: procedimentoData.profissional,
-        dataProcedimento: dataProcedimento,
         dataNovoProcedimento: dataNovoProcedimento // Adicionado
       };
   

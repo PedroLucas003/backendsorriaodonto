@@ -12,7 +12,7 @@ const ProcedimentoSchema = new mongoose.Schema({
     required: true
   },
   valor: { type: Number, min: 0, required: true },
-  dataProcedimento: { type: Date, required: true },
+  dataProcedimento: { type: Date, required: false },
   // dataNovoProcedimento: { type: Date, required: true }
 }, { timestamps: true });
 
@@ -181,7 +181,7 @@ const UserSchema = new mongoose.Schema({
   // No UserSchema
   dataProcedimento: {
     type: Date,
-    required: [true, "Data do procedimento é obrigatória"]
+    required: [false, "Data do procedimento é obrigatória"]
   },
   dataNovoProcedimento: { // Novo campo adicionado
     type: Date,

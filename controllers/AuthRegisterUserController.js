@@ -430,8 +430,17 @@ module.exports = class AuthRegisterUserController {
       const { id } = req.params;
       const procedimentoData = req.body;
   
-      // Remove a validação inicial do express-validator
-      // if (!errors.isEmpty()) {...}
+      // Validação dos dados
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ 
+          message: "Erro de validação",
+          errors: errors.array().reduce((acc, err) => {
+            acc[err.param] = err.msg;
+            return acc;
+          }, {})
+        });
+      }
   
       const user = await User.findById(id);
       if (!user) {
@@ -441,63 +450,71 @@ module.exports = class AuthRegisterUserController {
         });
       }
   
-      // Converte valor monetário (mantida essa validação)
+      // Converter valor para número
       const valorNumerico = procedimentoData.valor ? 
         parseFloat(procedimentoData.valor.toString().replace(/[^\d,]/g, '').replace(',', '.')) : 0;
   
-      // Função que aceita QUALQUER formato de data (ou vazio)
-      const parseDate = (dateString) => {
+      // Função para converter e validar datas
+      const parseDate = (dateString, fieldName) => {
         if (!dateString) return null;
         
-        try {
-          // Tenta converter de DD/MM/AAAA
-          if (dateString.includes('/')) {
-            const [day, month, year] = dateString.split('/');
-            return new Date(`${year}-${month}-${day}`);
-          }
-          
-          // Tenta converter diretamente (para caso já venha em formato ISO)
-          return new Date(dateString);
-        } catch {
-          // Se falhar, retorna null (não impede o cadastro)
-          return null;
+        // Assume que a data vem no formato DD/MM/AAAA do frontend
+        const [day, month, year] = dateString.split('/');
+        const dateObj = new Date(`${year}-${month}-${day}`);
+        
+        if (isNaN(dateObj.getTime())) {
+          throw new Error(`Data ${fieldName} inválida`);
         }
+        
+        return dateObj;
       };
   
-      // Cria procedimento - campos de data podem ser null
+      // Converter datas para formato Date
+      const dataProcedimento = parseDate(procedimentoData.dataProcedimento, "dataProcedimento");
+      const dataNovoProcedimento = parseDate(procedimentoData.dataNovoProcedimento, "dataNovoProcedimento");
+  
+      // Criar novo procedimento com datas
       const novoProcedimento = {
         procedimento: procedimentoData.procedimento,
         denteFace: procedimentoData.denteFace,
         valor: valorNumerico,
         modalidadePagamento: procedimentoData.modalidadePagamento,
         profissional: procedimentoData.profissional,
-        dataProcedimento: parseDate(procedimentoData.dataProcedimento), // Pode ser null
-        dataNovoProcedimento: parseDate(procedimentoData.dataNovoProcedimento) // Pode ser null
+        dataProcedimento: dataProcedimento,
+        dataNovoProcedimento: dataNovoProcedimento // Adicionado
       };
   
-      // Atualiza sem validações rígidas (remove runValidators)
+      // Atualizar usuário
       const updatedUser = await User.findByIdAndUpdate(
         id,
         { $push: { historicoProcedimentos: novoProcedimento } },
-        { new: true }
+        { new: true, runValidators: true }
       );
   
-      // Formata resposta (aceitando valores null)
+      // Formatar as datas para resposta
       const procedimentoResponse = {
         ...novoProcedimento,
-        dataProcedimento: novoProcedimento.dataProcedimento?.toISOString() || null,
-        dataNovoProcedimento: novoProcedimento.dataNovoProcedimento?.toISOString() || null
+        dataProcedimento: dataProcedimento.toISOString(),
+        dataNovoProcedimento: dataNovoProcedimento.toISOString() // Adicionado
       };
   
       res.status(201).json({
         message: "Procedimento adicionado com sucesso!",
         procedimento: procedimentoResponse
       });
-  
     } catch (error) {
       console.error("Erro ao adicionar procedimento:", error);
+      
+      if (error.name === 'ValidationError') {
+        const mongooseErrors = formatMongooseErrors(error);
+        return res.status(400).json({
+          message: "Erro de validação",
+          errors: mongooseErrors || error.message
+        });
+      }
+      
       res.status(500).json({ 
-        message: "Erro ao adicionar procedimento",
+        message: error.message || "Erro interno no servidor",
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }

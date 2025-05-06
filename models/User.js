@@ -1,23 +1,56 @@
 const mongoose = require("mongoose");
 
-// Schema para procedimentos
+// Schema para procedimentos (atualizado)
 const ProcedimentoSchema = new mongoose.Schema({
-  procedimento: { type: String, required: true },
-  denteFace: { type: String, required: true },
-  profissional: { type: String, required: true },
+  procedimento: { 
+    type: String, 
+    required: [true, "Procedimento é obrigatório"] 
+  },
+  denteFace: { 
+    type: String, 
+    required: [true, "Dente/Face é obrigatório"] 
+  },
+  profissional: { 
+    type: String, 
+    required: [true, "Profissional é obrigatório"] 
+  },
   modalidadePagamento: {
     type: String,
     enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto"],
-    required: true
+    required: [true, "Modalidade de pagamento é obrigatória"]
   },
-  valor: { type: Number, min: 0, required: true },
-  dataProcedimento: { type: Date, required: true },
-  // dataNovoProcedimento: { type: Date, required: true }
-}, { timestamps: true });
+  valor: { 
+    type: Number, 
+    min: 0, 
+    required: [true, "Valor é obrigatório"] 
+  },
+  dataProcedimento: {
+    type: String,
+    required: [true, "Data do procedimento é obrigatória"],
+    validate: {
+      validator: function(v) {
+        return /^\d{2}\/\d{2}\/\d{4}$/.test(v);
+      },
+      message: 'Formato de data inválido (DD/MM/AAAA)'
+    }
+  },
+  dataNovoProcedimento: {
+    type: String,
+    required: [true, "Data do novo procedimento é obrigatória"],
+    validate: {
+      validator: function(v) {
+        return /^\d{2}\/\d{2}\/\d{4}$/.test(v);
+      },
+      message: 'Formato de data inválido (DD/MM/AAAA)'
+    }
+  }
+}, { 
+  timestamps: true 
+});
 
-// Schema principal do usuário
+// Schema principal do usuário (atualizado)
 const UserSchema = new mongoose.Schema({
-  // Dados Pessoais (campos obrigatórios)
+  // Dados Pessoais
   nomeCompleto: {
     type: String,
     trim: true,
@@ -53,6 +86,7 @@ const UserSchema = new mongoose.Schema({
     required: [true, "Endereço é obrigatório"]
   },
 
+  // Datas (dataNascimento mantém como Date, procedimentos como String)
   dataNascimento: {
     type: Date,
     required: [true, "Data de nascimento é obrigatória"],
@@ -63,13 +97,35 @@ const UserSchema = new mongoose.Schema({
       message: "Data de nascimento deve ser no passado"
     }
   },
+  dataProcedimento: {
+    type: String,
+    required: [true, "Data do procedimento é obrigatória"],
+    validate: {
+      validator: function(v) {
+        return /^\d{2}\/\d{2}\/\d{4}$/.test(v);
+      },
+      message: 'Formato de data inválido (DD/MM/AAAA)'
+    }
+  },
+  dataNovoProcedimento: {
+    type: String,
+    required: [true, "Data do novo procedimento é obrigatória"],
+    validate: {
+      validator: function(v) {
+        return /^\d{2}\/\d{2}\/\d{4}$/.test(v);
+      },
+      message: 'Formato de data inválido (DD/MM/AAAA)'
+    }
+  },
+
+  // Autenticação
   password: {
     type: String,
     select: false,
     required: [true, "Senha é obrigatória"]
   },
 
-  // Campos de Saúde (obrigatórios)
+  // Saúde
   detalhesDoencas: {
     type: String,
     trim: true,
@@ -91,7 +147,7 @@ const UserSchema = new mongoose.Schema({
     required: [true, "Quais anestesias é obrigatório"]
   },
 
-  // Hábitos (obrigatórios)
+  // Hábitos
   habitos: {
     frequenciaFumo: {
       type: String,
@@ -105,7 +161,7 @@ const UserSchema = new mongoose.Schema({
     }
   },
 
-  // Exames (obrigatórios)
+  // Exames
   exames: {
     exameSangue: {
       type: String,
@@ -124,7 +180,7 @@ const UserSchema = new mongoose.Schema({
     }
   },
 
-  // Histórico Médico (obrigatórios)
+  // Histórico Médico
   historicoCirurgia: {
     type: String,
     trim: true,
@@ -151,7 +207,7 @@ const UserSchema = new mongoose.Schema({
     required: [true, "Peso é obrigatório"]
   },
 
-  // Procedimento Principal (obrigatório)
+  // Procedimento Principal
   procedimento: {
     type: String,
     trim: true,
@@ -177,23 +233,14 @@ const UserSchema = new mongoose.Schema({
     trim: true,
     required: [true, "Profissional é obrigatório"]
   },
-  // No UserSchema
-  dataProcedimento: {
-    type: Date,
-    required: [true, "Data do procedimento é obrigatória"]
-  },
-  dataNovoProcedimento: { // Novo campo adicionado
-    type: Date,
-    required: [true, "Data do novo procedimento é obrigatória"]
-  },
 
-  // Histórico de Procedimentos
+  // Histórico
   historicoProcedimentos: [ProcedimentoSchema],
 
   // Imagem
   image: { type: String },
 
-  // Controle de acesso
+  // Controle de Acesso
   role: {
     type: String,
     enum: ["user", "admin", "medico"],
@@ -210,7 +257,17 @@ const UserSchema = new mongoose.Schema({
   }
 });
 
-// Índices para performance
+// Índices
 UserSchema.index({ cpf: 1, email: 1 });
+
+// Middleware para conversão de datas (opcional)
+UserSchema.pre('save', function(next) {
+  // Converte dataNascimento para Date se for string
+  if (typeof this.dataNascimento === 'string' && this.dataNascimento.includes('/')) {
+    const [day, month, year] = this.dataNascimento.split('/');
+    this.dataNascimento = new Date(`${year}-${month}-${day}`);
+  }
+  next();
+});
 
 module.exports = mongoose.model("User", UserSchema);

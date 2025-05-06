@@ -272,8 +272,8 @@ module.exports = class AuthRegisterUserController {
   static async getProntuario(req, res) {
     try {
       const { cpf, password } = req.body;
-  
-      // Validação dos campos obrigatórios (mantido igual)
+
+      // Validação dos campos obrigatórios
       if (!cpf || !password) {
         return res.status(422).json({ 
           message: "Erro de validação",
@@ -283,8 +283,11 @@ module.exports = class AuthRegisterUserController {
           }
         });
       }
-  
+
+      // Limpa o CPF (remove caracteres não numéricos)
       const cleanedCPF = cpf.replace(/\D/g, '');
+      
+      // Busca o usuário no banco de dados (incluindo a senha para validação)
       const user = await User.findOne({ cpf: cleanedCPF }).select('+password');
       
       if (!user) {
@@ -293,7 +296,8 @@ module.exports = class AuthRegisterUserController {
           error: "NOT_FOUND"
         });
       }
-  
+
+      // Valida a senha
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
         return res.status(401).json({ 
@@ -301,51 +305,74 @@ module.exports = class AuthRegisterUserController {
           error: "INVALID_CREDENTIALS"
         });
       }
-  
-      // Função auxiliar para formatar data de nascimento (mantém conversão para Date)
-      const formatDateNascimento = (date) => {
+
+      // Função para formatar datas de forma segura
+      const safeFormatDate = (date) => {
         try {
           if (!date) return null;
+          // Converte para objeto Date se for string
           const d = date instanceof Date ? date : new Date(date);
-          if (isNaN(d.getTime())) return null;
-          
-          const day = String(d.getDate()).padStart(2, '0');
-          const month = String(d.getMonth() + 1).padStart(2, '0');
-          const year = d.getFullYear();
-          
-          return `${day}/${month}/${year}`;
+          return isNaN(d.getTime()) ? null : d;
         } catch (e) {
-          console.error("Erro ao formatar data de nascimento:", e);
+          console.error("Erro ao formatar data:", e);
           return null;
         }
       };
-  
-      // Prepara os procedimentos (agora usando strings diretamente)
+
+      // Função para formatar data no formato DD/MM/AAAA para exibição
+      const formatDateToDisplay = (date) => {
+        const d = safeFormatDate(date);
+        if (!d) return null;
+        
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        
+        return `${day}/${month}/${year}`;
+      };
+
+      // Prepara os procedimentos (principal + histórico)
       const procedimentoPrincipal = {
         procedimento: user.procedimento || "",
         denteFace: user.denteFace || "",
         valor: user.valor || 0,
         modalidadePagamento: user.modalidadePagamento || "",
         profissional: user.profissional || "",
-        dataProcedimento: user.dataProcedimento || "", // Já vem no formato DD/MM/AAAA
-        dataNovoProcedimento: user.dataNovoProcedimento || "", // Já vem no formato DD/MM/AAAA
+        dataProcedimento: formatDateToDisplay(user.dataProcedimento),
+        dataProcedimentoISO: user.dataProcedimento ? new Date(user.dataProcedimento).toISOString() : null,
+        dataNovoProcedimento: formatDateToDisplay(user.dataNovoProcedimento),
+        dataNovoProcedimentoISO: user.dataNovoProcedimento ? new Date(user.dataNovoProcedimento).toISOString() : null,
         isPrincipal: true,
-        createdAt: user.createdAt ? new Date(user.createdAt).toISOString() : null
+        createdAt: formatDateToDisplay(user.createdAt),
+        createdAtISO: user.createdAt ? new Date(user.createdAt).toISOString() : null
       };
-  
-      const historicoProcedimentos = (user.historicoProcedimentos || []).map(p => ({
-        ...p.toObject(),
-        dataProcedimento: p.dataProcedimento || "", // Já vem formatado
-        dataNovoProcedimento: p.dataNovoProcedimento || "", // Já vem formatado
-        isPrincipal: false,
-        createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : null
-      }));
-  
-      // Ordena por data de criação (mantido igual)
+
+      const historicoProcedimentos = (user.historicoProcedimentos || []).map(p => {
+        const procedimentoDate = p.dataProcedimento || p.createdAt;
+        const novoProcedimentoDate = p.dataNovoProcedimento || p.createdAt;
+        
+        return {
+          ...p.toObject(),
+          dataProcedimento: formatDateToDisplay(procedimentoDate),
+          dataProcedimentoISO: procedimentoDate ? new Date(procedimentoDate).toISOString() : null,
+          dataNovoProcedimento: formatDateToDisplay(novoProcedimentoDate),
+          dataNovoProcedimentoISO: novoProcedimentoDate ? new Date(novoProcedimentoDate).toISOString() : null,
+          isPrincipal: false,
+          createdAt: formatDateToDisplay(p.createdAt),
+          createdAtISO: p.createdAt ? new Date(p.createdAt).toISOString() : null
+        };
+      });
+
+      // Ordena todos os procedimentos por data (do mais recente para o mais antigo)
       const todosProcedimentos = [procedimentoPrincipal, ...historicoProcedimentos]
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  
-      // Prepara o objeto de retorno
+        .sort((a, b) => {
+          // Usa dataNovoProcedimento como prioridade, se existir
+          const dateA = safeFormatDate(a.dataNovoProcedimentoISO || a.dataProcedimentoISO || a.createdAtISO);
+          const dateB = safeFormatDate(b.dataNovoProcedimentoISO || b.dataProcedimentoISO || b.createdAtISO);
+          return (dateB?.getTime() || 0) - (dateA?.getTime() || 0);
+        });
+
+      // Prepara o objeto de retorno com todos os dados do prontuário
       const prontuario = {
         dadosPessoais: {
           nomeCompleto: user.nomeCompleto,
@@ -353,7 +380,7 @@ module.exports = class AuthRegisterUserController {
           cpf: user.cpf,
           telefone: user.telefone,
           endereco: user.endereco,
-          dataNascimento: formatDateNascimento(user.dataNascimento),
+          dataNascimento: formatDateToDisplay(user.dataNascimento),
           dataNascimentoISO: user.dataNascimento ? new Date(user.dataNascimento).toISOString() : null,
           image: user.image
         },
@@ -381,13 +408,13 @@ module.exports = class AuthRegisterUserController {
         },
         procedimentos: todosProcedimentos
       };
-  
+
       return res.status(200).json({
         success: true,
         message: "Prontuário recuperado com sucesso",
         data: prontuario
       });
-  
+
     } catch (error) {
       console.error("Erro ao buscar prontuário:", error);
       return res.status(500).json({ 
@@ -423,35 +450,38 @@ module.exports = class AuthRegisterUserController {
         });
       }
   
-      // Converter valor para número (mantido igual)
+      // Converter valor para número
       const valorNumerico = procedimentoData.valor ? 
         parseFloat(procedimentoData.valor.toString().replace(/[^\d,]/g, '').replace(',', '.')) : 0;
   
-      // Validação do formato das datas (DD/MM/AAAA)
-      const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
-      if (!dateRegex.test(procedimentoData.dataProcedimento)) {
-        return res.status(400).json({
-          message: "Formato de data inválido",
-          errors: { dataProcedimento: "Use o formato DD/MM/AAAA" }
-        });
-      }
+      // Função para converter e validar datas
+      const parseDate = (dateString, fieldName) => {
+        if (!dateString) return null;
+        
+        // Assume que a data vem no formato DD/MM/AAAA do frontend
+        const [day, month, year] = dateString.split('/');
+        const dateObj = new Date(`${year}-${month}-${day}`);
+        
+        if (isNaN(dateObj.getTime())) {
+          throw new Error(`Data ${fieldName} inválida`);
+        }
+        
+        return dateObj;
+      };
   
-      if (procedimentoData.dataNovoProcedimento && !dateRegex.test(procedimentoData.dataNovoProcedimento)) {
-        return res.status(400).json({
-          message: "Formato de data inválido",
-          errors: { dataNovoProcedimento: "Use o formato DD/MM/AAAA" }
-        });
-      }
+      // Converter datas para formato Date
+      const dataProcedimento = parseDate(procedimentoData.dataProcedimento, "dataProcedimento");
+      const dataNovoProcedimento = parseDate(procedimentoData.dataNovoProcedimento, "dataNovoProcedimento");
   
-      // Criar novo procedimento com strings de data
+      // Criar novo procedimento com datas
       const novoProcedimento = {
         procedimento: procedimentoData.procedimento,
         denteFace: procedimentoData.denteFace,
         valor: valorNumerico,
         modalidadePagamento: procedimentoData.modalidadePagamento,
         profissional: procedimentoData.profissional,
-        dataProcedimento: procedimentoData.dataProcedimento,
-        dataNovoProcedimento: procedimentoData.dataNovoProcedimento || null
+        dataProcedimento: dataProcedimento,
+        dataNovoProcedimento: dataNovoProcedimento // Adicionado
       };
   
       // Atualizar usuário
@@ -461,10 +491,16 @@ module.exports = class AuthRegisterUserController {
         { new: true, runValidators: true }
       );
   
-      // Resposta com os dados do procedimento (mantém as strings)
+      // Formatar as datas para resposta
+      const procedimentoResponse = {
+        ...novoProcedimento,
+        dataProcedimento: dataProcedimento.toISOString(),
+        dataNovoProcedimento: dataNovoProcedimento.toISOString() // Adicionado
+      };
+  
       res.status(201).json({
         message: "Procedimento adicionado com sucesso!",
-        procedimento: novoProcedimento
+        procedimento: procedimentoResponse
       });
     } catch (error) {
       console.error("Erro ao adicionar procedimento:", error);

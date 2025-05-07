@@ -26,10 +26,8 @@ const UserSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    unique: true,
-    lowercase: true,
-    required: [true, "E-mail é obrigatório"],
-    match: [/^\w+([.-]?\w+)@\w+([.-]?\w+)(\.\w{2,3})+$/, "E-mail inválido"]
+    lowercase: true,  // Converte para minúsculas (opcional)
+    required: [true, "E-mail é obrigatório"] // Ou false, se quiser opcional
   },
   cpf: {
     type: String,

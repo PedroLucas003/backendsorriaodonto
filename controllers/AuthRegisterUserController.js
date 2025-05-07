@@ -475,4 +475,3 @@ module.exports = class AuthRegisterUserController {
     }
 }
 };
-

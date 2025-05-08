@@ -1,3 +1,4 @@
+
 const mongoose = require("mongoose");
 
 // Schema para procedimentos
@@ -214,4 +215,3 @@ const UserSchema = new mongoose.Schema({
 UserSchema.index({ cpf: 1, email: 1 });
 
 module.exports = mongoose.model("User", UserSchema);
-

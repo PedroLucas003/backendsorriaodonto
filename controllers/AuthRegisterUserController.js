@@ -102,24 +102,17 @@ module.exports = class AuthRegisterUserController {
     }
   }
 
-  static async updateProcedimento(req, res) {
+static async updateProcedimento(req, res) {
   try {
     const { id, procedimentoId } = req.params;
     const procedimentoData = req.body;
 
-    // Validação básica
-    if (!procedimentoData.dataNovoProcedimento) {
+    // Validação mais robusta
+    if (!procedimentoData.procedimento || !procedimentoData.denteFace || 
+        !procedimentoData.valor || !procedimentoData.dataNovoProcedimento) {
       return res.status(400).json({ 
-        message: "Data do procedimento é obrigatória",
-        error: "INVALID_DATE"
-      });
-    }
-
-    const dataNovoProcedimento = new Date(procedimentoData.dataNovoProcedimento);
-    if (isNaN(dataNovoProcedimento.getTime())) {
-      return res.status(400).json({ 
-        message: "Data inválida",
-        error: "INVALID_DATE"
+        message: "Todos os campos são obrigatórios",
+        error: "MISSING_FIELDS"
       });
     }
 
@@ -127,12 +120,11 @@ module.exports = class AuthRegisterUserController {
       { _id: id, "historicoProcedimentos._id": procedimentoId },
       {
         $set: {
-          "historicoProcedimentos.$.procedimento": procedimentoData.procedimento,
-          "historicoProcedimentos.$.denteFace": procedimentoData.denteFace,
-          "historicoProcedimentos.$.valor": procedimentoData.valor,
-          "historicoProcedimentos.$.modalidadePagamento": procedimentoData.modalidadePagamento,
-          "historicoProcedimentos.$.profissional": procedimentoData.profissional,
-          "historicoProcedimentos.$.dataNovoProcedimento": dataNovoProcedimento
+          "historicoProcedimentos.$": {
+            ...procedimentoData,
+            _id: procedimentoId,
+            dataNovoProcedimento: new Date(procedimentoData.dataNovoProcedimento)
+          }
         }
       },
       { new: true }
@@ -153,7 +145,8 @@ module.exports = class AuthRegisterUserController {
   } catch (error) {
     console.error("Erro ao atualizar procedimento:", error);
     res.status(500).json({
-      message: error.message || "Erro interno no servidor"
+      message: "Erro interno no servidor",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 }

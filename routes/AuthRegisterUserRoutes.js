@@ -12,7 +12,7 @@ router.get("/users", verifyToken, AuthRegisterUserController.getAllUsers);
 router.put("/users/:id", verifyToken, AuthRegisterUserController.updateUser);
 router.delete("/users/:id", verifyToken, AuthRegisterUserController.deleteUser);
 router.put('/users/:id/procedimento', verifyToken, AuthRegisterUserController.addProcedimento);
-router.put('/:id/procedimento/:procedimentoId', authMiddleware, AuthRegisterUserController.updateProcedimento);
-router.delete('/:id/procedimento/:procedimentoId', authMiddleware, AuthRegisterUserController.deleteProcedimento);
+router.put('/users/:id/procedimento/:procedimentoId', verifyToken, AuthRegisterUserController.updateProcedimento);
+router.delete('/users/:id/procedimento/:procedimentoId', verifyToken, AuthRegisterUserController.deleteProcedimento);
 
 module.exports = router;

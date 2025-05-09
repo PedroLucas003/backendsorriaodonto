@@ -14,6 +14,8 @@ const formatMongooseErrors = (error) => {
   return errors;
 };
 
+
+
 // Função para validar dados antes de salvar
 const validateUserData = (userData) => {
   const errors = {};
@@ -99,6 +101,92 @@ module.exports = class AuthRegisterUserController {
       });
     }
   }
+
+  static async updateProcedimento(req, res) {
+  try {
+    const { id, procedimentoId } = req.params;
+    const procedimentoData = req.body;
+
+    // Validação básica
+    if (!procedimentoData.dataNovoProcedimento) {
+      return res.status(400).json({ 
+        message: "Data do procedimento é obrigatória",
+        error: "INVALID_DATE"
+      });
+    }
+
+    const dataNovoProcedimento = new Date(procedimentoData.dataNovoProcedimento);
+    if (isNaN(dataNovoProcedimento.getTime())) {
+      return res.status(400).json({ 
+        message: "Data inválida",
+        error: "INVALID_DATE"
+      });
+    }
+
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: id, "historicoProcedimentos._id": procedimentoId },
+      {
+        $set: {
+          "historicoProcedimentos.$.procedimento": procedimentoData.procedimento,
+          "historicoProcedimentos.$.denteFace": procedimentoData.denteFace,
+          "historicoProcedimentos.$.valor": procedimentoData.valor,
+          "historicoProcedimentos.$.modalidadePagamento": procedimentoData.modalidadePagamento,
+          "historicoProcedimentos.$.profissional": procedimentoData.profissional,
+          "historicoProcedimentos.$.dataNovoProcedimento": dataNovoProcedimento
+        }
+      },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ 
+        message: "Procedimento não encontrado",
+        error: "NOT_FOUND"
+      });
+    }
+
+    res.status(200).json({
+      message: "Procedimento atualizado com sucesso!",
+      procedimento: updatedUser.historicoProcedimentos.id(procedimentoId)
+    });
+
+  } catch (error) {
+    console.error("Erro ao atualizar procedimento:", error);
+    res.status(500).json({
+      message: error.message || "Erro interno no servidor"
+    });
+  }
+}
+
+static async deleteProcedimento(req, res) {
+  try {
+    const { id, procedimentoId } = req.params;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { $pull: { historicoProcedimentos: { _id: procedimentoId } } },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ 
+        message: "Usuário não encontrado",
+        error: "NOT_FOUND"
+      });
+    }
+
+    res.status(200).json({
+      message: "Procedimento excluído com sucesso!",
+      userId: id
+    });
+
+  } catch (error) {
+    console.error("Erro ao excluir procedimento:", error);
+    res.status(500).json({
+      message: error.message || "Erro interno no servidor"
+    });
+  }
+}
 
   static async getAllUsers(req, res) {
     try {

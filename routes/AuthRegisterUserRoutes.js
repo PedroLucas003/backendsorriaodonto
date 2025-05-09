@@ -14,5 +14,6 @@ router.delete("/users/:id", verifyToken, AuthRegisterUserController.deleteUser);
 router.put('/users/:id/procedimento', verifyToken, AuthRegisterUserController.addProcedimento);
 router.put('/users/:id/procedimento/:procedimentoId', verifyToken, AuthRegisterUserController.updateProcedimento);
 router.delete('/users/:id/procedimento/:procedimentoId', verifyToken, AuthRegisterUserController.deleteProcedimento);
+router.post('/refresh-token', AuthRegisterUserController.refreshToken);
 
 module.exports = router;

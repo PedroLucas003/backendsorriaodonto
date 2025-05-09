@@ -9,10 +9,14 @@ function verifyToken(req, res, next) {
     return res.status(401).json({ message: "Token não fornecido ou mal formatado." });
   }
 
-  const token = authHeader.split(" ")[1]; // Remove o 'Bearer'
+  const token = authHeader.split(" ")[1];
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) return res.status(403).json({ message: "Token inválido ou expirado." });
+  // Verificação que ignora a expiração
+  jwt.verify(token, process.env.JWT_SECRET, { ignoreExpiration: true }, (err, decoded) => {
+    if (err) {
+      console.error("Erro na verificação do token:", err);
+      return res.status(403).json({ message: "Token inválido." });
+    }
 
     req.userId = decoded.id;
     next();

@@ -6,7 +6,7 @@ const { validationResult } = require('express-validator');
 // Função para formatar erros do Mongoose
 const formatMongooseErrors = (error) => {
   if (!error.errors) return null;
-
+  
   const errors = {};
   Object.keys(error.errors).forEach(key => {
     errors[key] = error.errors[key].message;
@@ -14,21 +14,17 @@ const formatMongooseErrors = (error) => {
   return errors;
 };
 
-const userCache = createLRUCache({
-  max: 500,
-  ttl: 300000,
-});
 
 
 // Função para validar dados antes de salvar
 const validateUserData = (userData) => {
   const errors = {};
-
+  
   // Validações adicionais podem ser adicionadas aqui
   if (userData.password && userData.password.length < 6) {
     errors.password = "A senha deve ter pelo menos 6 caracteres";
   }
-
+  
   return Object.keys(errors).length > 0 ? errors : null;
 };
 
@@ -38,7 +34,7 @@ module.exports = class AuthRegisterUserController {
       // Validação dos dados
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({
+        return res.status(400).json({ 
           message: "Erro de validação",
           errors: errors.array().reduce((acc, err) => {
             acc[err.param] = err.msg;
@@ -51,7 +47,7 @@ module.exports = class AuthRegisterUserController {
 
       // Valida senha
       if (userData.password !== userData.confirmPassword) {
-        return res.status(422).json({
+        return res.status(422).json({ 
           message: "Erro de validação",
           errors: { confirmPassword: "As senhas não coincidem!" }
         });
@@ -71,18 +67,18 @@ module.exports = class AuthRegisterUserController {
 
       // Cria usuário
       const user = await User.create(userData);
-
+      
       // Remove senha da resposta
       const userResponse = user.toObject();
       delete userResponse.password;
 
-      res.status(201).json({
-        message: "Usuário cadastrado com sucesso!",
+      res.status(201).json({ 
+        message: "Usuário cadastrado com sucesso!", 
         user: userResponse
       });
     } catch (error) {
       console.error("Erro ao cadastrar usuário:", error);
-
+      
       // Tratamento de erros do Mongoose
       if (error.name === 'ValidationError') {
         const mongooseErrors = formatMongooseErrors(error);
@@ -91,135 +87,135 @@ module.exports = class AuthRegisterUserController {
           errors: mongooseErrors || error.message
         });
       }
-
+      
       if (error.code === 11000) {
-        return res.status(400).json({
+        return res.status(400).json({ 
           message: "Erro ao cadastrar usuário",
           error: "CPF ou E-mail já cadastrado"
         });
       }
-
-      res.status(500).json({
-        message: "Erro interno no servidor",
+      
+      res.status(500).json({ 
+        message: "Erro interno no servidor", 
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
 
 
-  static async refreshToken(req, res) {
-    try {
-      // Pega o token antigo (que pode estar expirado)
-      const oldToken = req.headers.authorization?.split(' ')[1];
-
-      if (!oldToken) {
-        return res.status(401).json({ message: "Token não fornecido" });
-      }
-
-      // Verifica o token mesmo expirado
-      const decoded = jwt.verify(oldToken, process.env.JWT_SECRET, { ignoreExpiration: true });
-
-      // Gera novo token
-      const newToken = jwt.sign({ id: decoded.id }, process.env.JWT_SECRET, {
-        expiresIn: "30d" // Novo tempo de expiração
-      });
-
-      res.json({ token: newToken });
-    } catch (error) {
-      console.error("Erro ao renovar token:", error);
-      res.status(401).json({ message: "Não foi possível renovar o token" });
+static async refreshToken(req, res) {
+  try {
+    // Pega o token antigo (que pode estar expirado)
+    const oldToken = req.headers.authorization?.split(' ')[1];
+    
+    if (!oldToken) {
+      return res.status(401).json({ message: "Token não fornecido" });
     }
+
+    // Verifica o token mesmo expirado
+    const decoded = jwt.verify(oldToken, process.env.JWT_SECRET, { ignoreExpiration: true });
+    
+    // Gera novo token
+    const newToken = jwt.sign({ id: decoded.id }, process.env.JWT_SECRET, {
+      expiresIn: "30d" // Novo tempo de expiração
+    });
+
+    res.json({ token: newToken });
+  } catch (error) {
+    console.error("Erro ao renovar token:", error);
+    res.status(401).json({ message: "Não foi possível renovar o token" });
   }
+}
 
-  static async updateProcedimento(req, res) {
-    try {
-      const { id, procedimentoId } = req.params;
-      const procedimentoData = req.body;
+static async updateProcedimento(req, res) {
+  try {
+    const { id, procedimentoId } = req.params;
+    const procedimentoData = req.body;
 
-      // Validação mais robusta
-      if (!procedimentoData.procedimento || !procedimentoData.denteFace ||
+    // Validação mais robusta
+    if (!procedimentoData.procedimento || !procedimentoData.denteFace || 
         !procedimentoData.valor || !procedimentoData.dataNovoProcedimento) {
-        return res.status(400).json({
-          message: "Todos os campos são obrigatórios",
-          error: "MISSING_FIELDS"
-        });
-      }
+      return res.status(400).json({ 
+        message: "Todos os campos são obrigatórios",
+        error: "MISSING_FIELDS"
+      });
+    }
 
-      const updatedUser = await User.findOneAndUpdate(
-        { _id: id, "historicoProcedimentos._id": procedimentoId },
-        {
-          $set: {
-            "historicoProcedimentos.$": {
-              ...procedimentoData,
-              _id: procedimentoId,
-              dataNovoProcedimento: new Date(procedimentoData.dataNovoProcedimento)
-            }
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: id, "historicoProcedimentos._id": procedimentoId },
+      {
+        $set: {
+          "historicoProcedimentos.$": {
+            ...procedimentoData,
+            _id: procedimentoId,
+            dataNovoProcedimento: new Date(procedimentoData.dataNovoProcedimento)
           }
-        },
-        { new: true }
-      );
+        }
+      },
+      { new: true }
+    );
 
-      if (!updatedUser) {
-        return res.status(404).json({
-          message: "Procedimento não encontrado",
-          error: "NOT_FOUND"
-        });
-      }
-
-      res.status(200).json({
-        message: "Procedimento atualizado com sucesso!",
-        procedimento: updatedUser.historicoProcedimentos.id(procedimentoId)
-      });
-
-    } catch (error) {
-      console.error("Erro ao atualizar procedimento:", error);
-      res.status(500).json({
-        message: "Erro interno no servidor",
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    if (!updatedUser) {
+      return res.status(404).json({ 
+        message: "Procedimento não encontrado",
+        error: "NOT_FOUND"
       });
     }
+
+    res.status(200).json({
+      message: "Procedimento atualizado com sucesso!",
+      procedimento: updatedUser.historicoProcedimentos.id(procedimentoId)
+    });
+
+  } catch (error) {
+    console.error("Erro ao atualizar procedimento:", error);
+    res.status(500).json({
+      message: "Erro interno no servidor",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
+}
 
-  static async deleteProcedimento(req, res) {
-    try {
-      const { id, procedimentoId } = req.params;
+static async deleteProcedimento(req, res) {
+  try {
+    const { id, procedimentoId } = req.params;
 
-      const updatedUser = await User.findByIdAndUpdate(
-        id,
-        { $pull: { historicoProcedimentos: { _id: procedimentoId } } },
-        { new: true }
-      );
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { $pull: { historicoProcedimentos: { _id: procedimentoId } } },
+      { new: true }
+    );
 
-      if (!updatedUser) {
-        return res.status(404).json({
-          message: "Usuário não encontrado",
-          error: "NOT_FOUND"
-        });
-      }
-
-      res.status(200).json({
-        message: "Procedimento excluído com sucesso!",
-        userId: id
-      });
-
-    } catch (error) {
-      console.error("Erro ao excluir procedimento:", error);
-      res.status(500).json({
-        message: error.message || "Erro interno no servidor"
+    if (!updatedUser) {
+      return res.status(404).json({ 
+        message: "Usuário não encontrado",
+        error: "NOT_FOUND"
       });
     }
+
+    res.status(200).json({
+      message: "Procedimento excluído com sucesso!",
+      userId: id
+    });
+
+  } catch (error) {
+    console.error("Erro ao excluir procedimento:", error);
+    res.status(500).json({
+      message: error.message || "Erro interno no servidor"
+    });
   }
+}
 
   static async getAllUsers(req, res) {
     try {
       const users = await User.find({})
         .select('-password')
         .sort({ createdAt: -1 }); // Ordena por data de criação (mais novos primeiro)
-
+      
       res.json(users); // Retorna array direto de usuários
     } catch (error) {
       console.error("Erro ao buscar usuários:", error);
-      res.status(500).json({
+      res.status(500).json({ 
         message: "Erro interno no servidor",
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
@@ -234,7 +230,7 @@ module.exports = class AuthRegisterUserController {
       // Validação dos dados
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({
+        return res.status(400).json({ 
           message: "Erro de validação",
           errors: errors.array().reduce((acc, err) => {
             acc[err.param] = err.msg;
@@ -245,7 +241,7 @@ module.exports = class AuthRegisterUserController {
 
       const existingUser = await User.findById(id);
       if (!existingUser) {
-        return res.status(404).json({
+        return res.status(404).json({ 
           message: "Usuário não encontrado.",
           error: "NOT_FOUND"
         });
@@ -265,8 +261,8 @@ module.exports = class AuthRegisterUserController {
       const updatedUser = await User.findByIdAndUpdate(
         id,
         { $set: userData },
-        {
-          new: true,
+        { 
+          new: true, 
           lean: true,
           runValidators: true // Garante que as validações sejam executadas
         }
@@ -278,7 +274,7 @@ module.exports = class AuthRegisterUserController {
       });
     } catch (error) {
       console.error("Erro ao atualizar usuário:", error);
-
+      
       if (error.name === 'ValidationError') {
         const mongooseErrors = formatMongooseErrors(error);
         return res.status(400).json({
@@ -286,7 +282,7 @@ module.exports = class AuthRegisterUserController {
           errors: mongooseErrors || error.message
         });
       }
-
+      
       res.status(500).json({
         message: "Erro interno no servidor",
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -298,20 +294,81 @@ module.exports = class AuthRegisterUserController {
     try {
       const { id } = req.params;
       const deletedUser = await User.findByIdAndDelete(id);
-
+      
       if (!deletedUser) {
-        return res.status(404).json({
+        return res.status(404).json({ 
           message: "Usuário não encontrado.",
           error: "NOT_FOUND"
         });
       }
-
-      res.json({
+      
+      res.json({ 
         message: "Usuário excluído com sucesso!",
         userId: id
       });
     } catch (error) {
       console.error("Erro ao excluir usuário:", error);
+      res.status(500).json({ 
+        message: "Erro interno no servidor",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  static async loginUser(req, res) {
+    try {
+      const { cpf, password } = req.body;
+      
+      if (!cpf || !password) {
+        return res.status(422).json({ 
+          message: "Erro de validação",
+          errors: {
+            cpf: !cpf ? "CPF é obrigatório" : undefined,
+            password: !password ? "Senha é obrigatória" : undefined
+          }
+        });
+      }
+
+      const cpfLimpo = cpf.replace(/\D/g, '');
+
+      const user = await User.findOne({ 
+        $or: [
+          { cpf: cpfLimpo },
+          { cpf: cpfLimpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") }
+        ]
+      }).select('+password');
+      
+      if (!user) {
+        return res.status(401).json({ 
+          message: "Credenciais inválidas",
+          error: "INVALID_CREDENTIALS"
+        });
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ 
+          message: "Credenciais inválidas",
+          error: "INVALID_CREDENTIALS"
+        });
+      }
+
+      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+  expiresIn: "30d" // Expira em 30 dias
+});
+
+
+      res.status(200).json({
+        token,
+        user: {
+          id: user._id,
+          nomeCompleto: user.nomeCompleto,
+          email: user.email,
+          role: user.role
+        }
+      });
+    } catch (error) {
+      console.error("Erro no login:", error);
       res.status(500).json({
         message: "Erro interno no servidor",
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -319,83 +376,13 @@ module.exports = class AuthRegisterUserController {
     }
   }
 
-static async loginUser(req, res) {
-    const { cpf, password } = req.body;
-    const cpfLimpo = cpf.replace(/\D/g, '');
-
-    try {
-        // Verificação ultra-rápida de campos obrigatórios
-        if (!cpf || !password) {
-            return res.status(422).json({ 
-                message: "Erro de validação",
-                errors: {
-                    cpf: !cpf ? "CPF é obrigatório" : undefined,
-                    password: !password ? "Senha é obrigatória" : undefined
-                }
-            });
-        }
-
-        // Consulta otimizada ao MongoDB com projeção seletiva
-        const user = await User.findOne(
-            { cpf: cpfLimpo }, // Busca apenas pelo CPF numérico (mais eficiente)
-            {
-                _id: 1,
-                nomeCompleto: 1,
-                email: 1,
-                password: 1,
-                role: 1,
-                cpf: 1
-            }
-        ).lean(); // Usa lean() para objeto JavaScript puro
-
-        if (!user) {
-            return res.status(401).json({ 
-                message: "Credenciais inválidas",
-                error: "INVALID_CREDENTIALS"
-            });
-        }
-
-        // Comparação de senha não-bloqueante
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            return res.status(401).json({ 
-                message: "Credenciais inválidas",
-                error: "INVALID_CREDENTIALS"
-            });
-        }
-
-        // Geração do token otimizada
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-            expiresIn: "30d"
-        });
-
-        // Resposta mínima essencial
-        res.status(200).json({
-            token,
-            user: {
-                id: user._id,
-                nomeCompleto: user.nomeCompleto,
-                email: user.email,
-                role: user.role
-            }
-        });
-
-    } catch (error) {
-        console.error("Erro no login:", error);
-        res.status(500).json({ 
-            message: "Erro interno no servidor",
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
-    }
-}
-
   static async getProntuario(req, res) {
     try {
       const { cpf, password } = req.body;
 
       // Validação dos campos obrigatórios
       if (!cpf || !password) {
-        return res.status(422).json({
+        return res.status(422).json({ 
           message: "Erro de validação",
           errors: {
             cpf: !cpf ? "CPF é obrigatório" : undefined,
@@ -406,12 +393,12 @@ static async loginUser(req, res) {
 
       // Limpa o CPF (remove caracteres não numéricos)
       const cleanedCPF = cpf.replace(/\D/g, '');
-
+      
       // Busca o usuário no banco de dados (incluindo a senha para validação)
       const user = await User.findOne({ cpf: cleanedCPF }).select('+password');
-
+      
       if (!user) {
-        return res.status(404).json({
+        return res.status(404).json({ 
           message: "Paciente não encontrado!",
           error: "NOT_FOUND"
         });
@@ -420,7 +407,7 @@ static async loginUser(req, res) {
       // Valida a senha
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-        return res.status(401).json({
+        return res.status(401).json({ 
           message: "Credenciais inválidas",
           error: "INVALID_CREDENTIALS"
         });
@@ -443,11 +430,11 @@ static async loginUser(req, res) {
       const formatDateToDisplay = (date) => {
         const d = safeFormatDate(date);
         if (!d) return null;
-
+        
         const day = String(d.getDate()).padStart(2, '0');
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const year = d.getFullYear();
-
+        
         return `${day}/${month}/${year}`;
       };
 
@@ -470,7 +457,7 @@ static async loginUser(req, res) {
       const historicoProcedimentos = (user.historicoProcedimentos || []).map(p => {
         const procedimentoDate = p.dataProcedimento || p.createdAt;
         const novoProcedimentoDate = p.dataNovoProcedimento || p.createdAt;
-
+        
         return {
           ...p.toObject(),
           dataProcedimento: formatDateToDisplay(procedimentoDate),
@@ -537,7 +524,7 @@ static async loginUser(req, res) {
 
     } catch (error) {
       console.error("Erro ao buscar prontuário:", error);
-      return res.status(500).json({
+      return res.status(500).json({ 
         success: false,
         message: "Erro interno no servidor",
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -549,24 +536,24 @@ static async loginUser(req, res) {
     try {
       const { id } = req.params;
       const procedimentoData = req.body;
-
+  
       // Validação básica
       if (!procedimentoData.dataNovoProcedimento) {
-        return res.status(400).json({
+        return res.status(400).json({ 
           message: "Data do procedimento é obrigatória",
           error: "INVALID_DATE"
         });
       }
-
+  
       // Aceita tanto ISO string quanto objeto Date
       const dataNovoProcedimento = new Date(procedimentoData.dataNovoProcedimento);
       if (isNaN(dataNovoProcedimento.getTime())) {
-        return res.status(400).json({
+        return res.status(400).json({ 
           message: "Data inválida",
           error: "INVALID_DATE"
         });
       }
-
+  
       const novoProcedimento = {
         procedimento: procedimentoData.procedimento,
         denteFace: procedimentoData.denteFace,
@@ -575,23 +562,23 @@ static async loginUser(req, res) {
         profissional: procedimentoData.profissional,
         dataNovoProcedimento: dataNovoProcedimento
       };
-
+  
       const updatedUser = await User.findByIdAndUpdate(
         id,
         { $push: { historicoProcedimentos: novoProcedimento } },
         { new: true }
       );
-
+  
       res.status(201).json({
         message: "Procedimento adicionado com sucesso!",
         procedimento: novoProcedimento
       });
-
+  
     } catch (error) {
       console.error("Erro ao adicionar procedimento:", error);
       res.status(500).json({
         message: error.message || "Erro interno no servidor"
       });
     }
-  }
+}
 };

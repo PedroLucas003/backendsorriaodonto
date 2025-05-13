@@ -91,7 +91,7 @@ module.exports = class AuthRegisterUserController {
       if (error.code === 11000) {
         return res.status(400).json({ 
           message: "Erro ao cadastrar usuário",
-          error: "CPF ou E-mail já cadastrado"
+          error: "CPF já cadastrado"
         });
       }
       

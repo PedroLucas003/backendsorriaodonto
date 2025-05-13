@@ -24,14 +24,6 @@ const UserSchema = new mongoose.Schema({
     trim: true,
     required: [true, "Nome completo é obrigatório"]
   },
-  email: {
-    type: String,
-    lowercase: true,
-    trim: true,
-    default: null,
-    required: false,
-    index: false
-  },
   cpf: {
     type: String,
     unique: true,

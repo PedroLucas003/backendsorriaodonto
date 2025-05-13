@@ -53,20 +53,6 @@ module.exports = class AuthRegisterUserController {
         });
       }
 
-      userData.email = userData.email && userData.email.trim() !== "" 
-      ? userData.email.trim().toLowerCase() 
-      : null;
-
-      // Verificar se já existe usuário com o mesmo CPF (mantenha essa verificação)
-    const existingUser = await User.findOne({ cpf: userData.cpf });
-    if (existingUser) {
-      return res.status(400).json({ 
-        message: "Erro ao cadastrar usuário",
-        error: "CPF já cadastrado"
-      });
-    }
-
-
       // Validações adicionais
       const validationErrors = validateUserData(userData);
       if (validationErrors) {
@@ -105,7 +91,7 @@ module.exports = class AuthRegisterUserController {
       if (error.code === 11000) {
         return res.status(400).json({ 
           message: "Erro ao cadastrar usuário",
-          error: "CPF já cadastrado ou emaail já cadastrado"
+          error: "CPF já cadastrado"
         });
       }
       
@@ -497,7 +483,6 @@ static async deleteProcedimento(req, res) {
       const prontuario = {
         dadosPessoais: {
           nomeCompleto: user.nomeCompleto,
-          email: user.email,
           cpf: user.cpf,
           telefone: user.telefone,
           endereco: user.endereco,

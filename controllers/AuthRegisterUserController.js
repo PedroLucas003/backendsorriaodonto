@@ -53,6 +53,11 @@ module.exports = class AuthRegisterUserController {
         });
       }
 
+      if (userData.email && userData.email.trim() === "") {
+      userData.email = null;
+    }
+
+
       // Validações adicionais
       const validationErrors = validateUserData(userData);
       if (validationErrors) {

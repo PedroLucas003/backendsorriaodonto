@@ -28,6 +28,7 @@ const UserSchema = new mongoose.Schema({
     type: String,
     lowercase: true,
     trim: true,
+    default: null,
     required: false
   },
   cpf: {

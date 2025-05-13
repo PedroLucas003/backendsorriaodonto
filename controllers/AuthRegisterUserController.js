@@ -53,8 +53,17 @@ module.exports = class AuthRegisterUserController {
         });
       }
 
-      if (userData.email && userData.email.trim() === "") {
-      userData.email = null;
+      userData.email = userData.email && userData.email.trim() !== "" 
+      ? userData.email.trim().toLowerCase() 
+      : null;
+
+      // Verificar se já existe usuário com o mesmo CPF (mantenha essa verificação)
+    const existingUser = await User.findOne({ cpf: userData.cpf });
+    if (existingUser) {
+      return res.status(400).json({ 
+        message: "Erro ao cadastrar usuário",
+        error: "CPF já cadastrado"
+      });
     }
 
 
@@ -96,7 +105,7 @@ module.exports = class AuthRegisterUserController {
       if (error.code === 11000) {
         return res.status(400).json({ 
           message: "Erro ao cadastrar usuário",
-          error: "CPF já cadastrado"
+          error: "CPF já cadastrado ou emaail já cadastrado"
         });
       }
       

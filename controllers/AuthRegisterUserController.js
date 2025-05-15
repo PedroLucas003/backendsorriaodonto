@@ -349,9 +349,9 @@ static async loginUser(req, res) {
       }
 
       // Token com menos dados no payload
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "30d"
-      });
+       const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+            expiresIn: "24h" // Alterado de "30d" para "24h"
+        });
 
       // Resposta mais enxuta (mantendo a estrutura original)
       res.status(200).json({

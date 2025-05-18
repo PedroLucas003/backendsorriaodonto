@@ -206,21 +206,35 @@ module.exports = class AuthRegisterUserController {
     }
   }
 
-  static async getAllUsers(req, res) {
-    try {
-      const users = await User.find({})
-        .select('-password')
-        .sort({ createdAt: -1 }); // Ordena por data de criação (mais novos primeiro)
+static async getAllUsers(req, res) {
+  try {
+    const users = await User.find({})
+      .select('-password')
+      .sort({ createdAt: -1 });
 
-      res.json(users); // Retorna array direto de usuários
-    } catch (error) {
-      console.error("Erro ao buscar usuários:", error);
-      res.status(500).json({
-        message: "Erro interno no servidor",
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+    // Verifica se o cliente quer uma resposta simples (para compatibilidade)
+    const simpleResponse = req.query.simple === 'true';
+    
+    if (simpleResponse) {
+      return res.json(users); // Resposta antiga (apenas array)
     }
+
+    // Nova estrutura de resposta
+    res.json({
+      success: true,
+      data: users,
+      count: users.length
+    });
+    
+  } catch (error) {
+    console.error("Erro ao buscar usuários:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro interno no servidor",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
+}
 
   static async updateUser(req, res) {
     try {

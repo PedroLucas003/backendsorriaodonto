@@ -1,3 +1,5 @@
+
+
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -101,31 +103,6 @@ module.exports = class AuthRegisterUserController {
       });
     }
   }
-
-
-static async refreshToken(req, res) {
-  try {
-    // Pega o token antigo (que pode estar expirado)
-    const oldToken = req.headers.authorization?.split(' ')[1];
-    
-    if (!oldToken) {
-      return res.status(401).json({ message: "Token não fornecido" });
-    }
-
-    // Verifica o token mesmo expirado
-    const decoded = jwt.verify(oldToken, process.env.JWT_SECRET, { ignoreExpiration: true });
-    
-    // Gera novo token
-    const newToken = jwt.sign({ id: decoded.id }, process.env.JWT_SECRET, {
-      expiresIn: "30d" // Novo tempo de expiração
-    });
-
-    res.json({ token: newToken });
-  } catch (error) {
-    console.error("Erro ao renovar token:", error);
-    res.status(401).json({ message: "Não foi possível renovar o token" });
-  }
-}
 
 static async updateProcedimento(req, res) {
   try {
@@ -582,4 +559,3 @@ static async deleteProcedimento(req, res) {
     }
 }
 };
-

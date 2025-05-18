@@ -4,7 +4,6 @@ const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 
-// Debug: Log de inicialização
 console.log('=== Iniciando Servidor ===');
 
 const app = express();
@@ -14,49 +13,47 @@ app.use(helmet());
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-// Configuração CORS (CORREÇÃO APLICADA)
+// Configuração CORS - Versão Corrigida
 const allowedOrigins = [
-  'https://frontendsorriaodonto.vercel.app', // URL do seu frontend
+  'https://frontvercel.vercel.app', // SEU FRONTEND ATUAL
+  'https://frontendsorriaodonto.vercel.app',
   'https://sorriaodontofn.com',
-  'http://localhost:4000'
+  'http://localhost:3000', // Frontend local
+  'http://localhost:4000'  // Backend local
 ];
-
-app.use(cors({
-  origin: allowedOrigins,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
 
 const corsOptions = {
   origin: function (origin, callback) {
+    // Permitir requisições sem origem (como mobile apps ou curl)
     if (!origin) return callback(null, true);
     
-    const originMatches = allowedOrigins.some(allowedOrigin => {
+    // Verificar se a origem está na lista de permitidas
+    if (allowedOrigins.some(allowedOrigin => {
       return origin === allowedOrigin || 
              origin.includes(allowedOrigin.replace(/https?:\/\//, ''));
-    });
-    
-    if (originMatches) {
-      callback(null, true);
-    } else {
-      console.warn(`CORS bloqueado para origem: ${origin}`);
-      callback(new Error('Não permitido por CORS'));
+    })) {
+      return callback(null, true);
     }
+    
+    console.warn(`⚠️ CORS bloqueado para origem: ${origin}`);
+    callback(new Error('Não permitido por CORS'));
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
+  optionsSuccessStatus: 200 // Para navegadores mais antigos
 };
 
+// Aplicar CORS apenas uma vez
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+app.options('*', cors(corsOptions)); // Habilitar preflight para todas as rotas
 
 // Rate Limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  standardHeaders: true
+  standardHeaders: true,
+  legacyHeaders: false
 });
 app.use(limiter);
 

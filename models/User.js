@@ -24,12 +24,6 @@ const UserSchema = new mongoose.Schema({
     trim: true,
     required: [true, "Nome completo é obrigatório"]
   },
-  email: {
-    type: String,
-    lowercase: true,
-    trim: true,
-    required: false
-  },
   cpf: {
     type: String,
     unique: true,
@@ -211,6 +205,6 @@ const UserSchema = new mongoose.Schema({
 });
 
 // Índices para performance
-UserSchema.index({ cpf: 1, email: 1 });
+UserSchema.index({ cpf: 1});
 
 module.exports = mongoose.model("User", UserSchema);

@@ -365,7 +365,6 @@ static async loginUser(req, res) {
         user: {
           id: user._id,
           nomeCompleto: user.nomeCompleto,
-          email: user.email,
           role: user.role
         }
       });
@@ -485,7 +484,6 @@ static async loginUser(req, res) {
       const prontuario = {
         dadosPessoais: {
           nomeCompleto: user.nomeCompleto,
-          email: user.email,
           cpf: user.cpf,
           telefone: user.telefone,
           endereco: user.endereco,

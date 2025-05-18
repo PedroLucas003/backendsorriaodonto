@@ -206,21 +206,27 @@ module.exports = class AuthRegisterUserController {
     }
   }
 
-  static async getAllUsers(req, res) {
-    try {
-      const users = await User.find({})
-        .select('-password')
-        .sort({ createdAt: -1 }); // Ordena por data de criação (mais novos primeiro)
+static async getAllUsers(req, res) {
+  try {
+    console.log('[API] Buscando usuários...');
+    console.log('[API] Usuário autenticado ID:', req.userId);
 
-      res.json(users); // Retorna array direto de usuários
-    } catch (error) {
-      console.error("Erro ao buscar usuários:", error);
-      res.status(500).json({
-        message: "Erro interno no servidor",
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
+    const users = await User.find({})
+      .select('-password -__v')
+      .sort({ createdAt: -1 });
+
+    console.log(`[API] ${users.length} usuários encontrados`);
+    res.json(users);
+
+  } catch (error) {
+    console.error('[API] Erro crítico:', error);
+    res.status(500).json({ 
+      success: false,
+      message: "Erro no servidor",
+      error: process.env.NODE_ENV === 'development' ? error.message : null
+    });
   }
+}
 
   static async updateUser(req, res) {
     try {

@@ -3,35 +3,48 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const morgan = require("morgan"); // Novo pacote para logs (instale com npm install morgan)
 
 console.log('=== Iniciando Servidor ===');
 
+// Configurações iniciais
 const app = express();
+const PORT = process.env.PORT || 4000;
 
-// Middlewares de Segurança
+// =============================================
+//               MIDDLEWARES
+// =============================================
+
+// Segurança
 app.use(helmet());
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-// Configuração CORS - Versão Corrigida
+// Logs de requisições (apenas em desenvolvimento)
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+  console.log('🔍 Modo desenvolvimento: logs detalhados ativados');
+}
+
+// Configuração CORS
 const allowedOrigins = [
-  'https://frontvercel.vercel.app', // SEU FRONTEND ATUAL
+  'https://frontvercel.vercel.app',
   'https://frontendsorriaodonto.vercel.app',
   'https://sorriaodontofn.com',
-  'http://localhost:3000', // Frontend local
-  'http://localhost:4000'  // Backend local
+  'http://localhost:3000',
+  'http://localhost:4000'
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Permitir requisições sem origem (como mobile apps ou curl)
     if (!origin) return callback(null, true);
     
-    // Verificar se a origem está na lista de permitidas
-    if (allowedOrigins.some(allowedOrigin => {
-      return origin === allowedOrigin || 
-             origin.includes(allowedOrigin.replace(/https?:\/\//, ''));
-    })) {
+    const originIsAllowed = allowedOrigins.some(allowedOrigin => 
+      origin === allowedOrigin || 
+      origin.includes(allowedOrigin.replace(/https?:\/\//, ''))
+    );
+
+    if (originIsAllowed) {
       return callback(null, true);
     }
     
@@ -41,40 +54,53 @@ const corsOptions = {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   credentials: true,
-  optionsSuccessStatus: 200 // Para navegadores mais antigos
+  optionsSuccessStatus: 200
 };
 
-// Aplicar CORS apenas uma vez
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Habilitar preflight para todas as rotas
+app.options('*', cors(corsOptions));
 
 // Rate Limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
+  message: {
+    success: false,
+    message: "Muitas requisições deste IP. Tente novamente mais tarde."
+  },
   standardHeaders: true,
   legacyHeaders: false
 });
 app.use(limiter);
 
-// Conexão com Banco de Dados
+// =============================================
+//               BANCO DE DADOS
+// =============================================
 require("./database/connection");
+console.log('✅ Conexão com o banco de dados estabelecida');
 
-// Rotas
+// =============================================
+//                  ROTAS
+// =============================================
 const AuthRegisterUserRoutes = require("./routes/AuthRegisterUserRoutes");
 app.use('/api', AuthRegisterUserRoutes);
 
+// Log de rotas acessadas
 app.use((req, res, next) => {
-  console.log(`📦 Rota acessada: ${req.method} ${req.originalUrl}`);
+  console.log(`📦 ${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
   next();
 });
 
-// Documentação da API
+// =============================================
+//             ROTA DE STATUS
+// =============================================
 app.get('/', (req, res) => {
   res.status(200).json({
+    success: true,
     status: 'online',
     service: 'Sorria Odonto Backend',
     version: '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
     endpoints: {
       login: 'POST /api/login',
       register: 'POST /api/register/user',
@@ -83,18 +109,46 @@ app.get('/', (req, res) => {
   });
 });
 
-// Tratamento de Erros
+// =============================================
+//            TRATAMENTO DE ERROS
+// =============================================
+
+// Rota não encontrada
 app.use((req, res) => {
-  res.status(404).json({ message: "Endpoint não encontrado" });
+  res.status(404).json({ 
+    success: false,
+    message: "Endpoint não encontrado",
+    code: "NOT_FOUND"
+  });
 });
 
+// Erros globais
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: "Erro interno do servidor" });
+  console.error('💥 ERRO:', err.stack);
+  
+  // Tratamento específico para erros CORS
+  if (err.message === 'Não permitido por CORS') {
+    return res.status(403).json({
+      success: false,
+      message: "Acesso não autorizado",
+      code: "CORS_BLOCKED"
+    });
+  }
+
+  // Erro genérico
+  res.status(500).json({ 
+    success: false,
+    message: "Erro interno do servidor",
+    code: "INTERNAL_ERROR",
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
-// Inicialização do Servidor
-const PORT = process.env.PORT || 4000;
+// =============================================
+//               INICIALIZAÇÃO
+// =============================================
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`🌐 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🕒 ${new Date().toLocaleString()}`);
 });

@@ -171,11 +171,6 @@ const UserSchema = new mongoose.Schema({
     trim: true,
     required: [true, "Profissional é obrigatório"]
   },
-  // No UserSchema
-  dataProcedimento: {
-    type: Date,
-    required: [false, "Data do procedimento é obrigatória"]
-  },
   dataNovoProcedimento: { // Novo campo adicionado
     type: Date,
     required: [true, "Data do novo procedimento é obrigatória"]

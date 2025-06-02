@@ -53,6 +53,17 @@ module.exports = class AuthRegisterUserController {
         });
       }
 
+      // Valida e converte dataNovoProcedimento
+      if (userData.dataNovoProcedimento) {
+        userData.dataNovoProcedimento = new Date(userData.dataNovoProcedimento);
+        if (isNaN(userData.dataNovoProcedimento.getTime())) {
+          return res.status(400).json({
+            message: "Data do procedimento inválida",
+            error: "INVALID_DATE"
+          });
+        }
+      }
+
       // Validações adicionais
       const validationErrors = validateUserData(userData);
       if (validationErrors) {
@@ -101,6 +112,7 @@ module.exports = class AuthRegisterUserController {
       });
     }
   }
+
 
 
   static async refreshToken(req, res) {
@@ -228,7 +240,7 @@ static async getAllUsers(req, res) {
   }
 }
 
-  static async updateUser(req, res) {
+ static async updateUser(req, res) {
     try {
       const { id } = req.params;
       const userData = req.body;
@@ -251,6 +263,17 @@ static async getAllUsers(req, res) {
           message: "Usuário não encontrado.",
           error: "NOT_FOUND"
         });
+      }
+
+      // Valida e converte dataNovoProcedimento se existir
+      if (userData.dataNovoProcedimento) {
+        userData.dataNovoProcedimento = new Date(userData.dataNovoProcedimento);
+        if (isNaN(userData.dataNovoProcedimento.getTime())) {
+          return res.status(400).json({
+            message: "Data do procedimento inválida",
+            error: "INVALID_DATE"
+          });
+        }
       }
 
       // Atualizar imagem se fornecida
@@ -440,20 +463,18 @@ static async loginUser(req, res) {
       };
 
       // Prepara os procedimentos (principal + histórico)
-      const procedimentoPrincipal = {
-        procedimento: user.procedimento || "",
-        denteFace: user.denteFace || "",
-        valor: user.valor || 0,
-        modalidadePagamento: user.modalidadePagamento || "",
-        profissional: user.profissional || "",
-        dataProcedimento: formatDateToDisplay(user.dataProcedimento),
-        dataProcedimentoISO: user.dataProcedimento ? new Date(user.dataProcedimento).toISOString() : null,
-        dataNovoProcedimento: formatDateToDisplay(user.dataNovoProcedimento),
-        dataNovoProcedimentoISO: user.dataNovoProcedimento ? new Date(user.dataNovoProcedimento).toISOString() : null,
-        isPrincipal: true,
-        createdAt: formatDateToDisplay(user.createdAt),
-        createdAtISO: user.createdAt ? new Date(user.createdAt).toISOString() : null
-      };
+    const procedimentoPrincipal = {
+      procedimento: user.procedimento || "",
+      denteFace: user.denteFace || "",
+      valor: user.valor || 0,
+      modalidadePagamento: user.modalidadePagamento || "",
+      profissional: user.profissional || "",
+      dataProcedimento: formatDateToDisplay(user.dataNovoProcedimento),
+      dataProcedimentoISO: user.dataNovoProcedimento ? new Date(user.dataNovoProcedimento).toISOString() : null,
+      isPrincipal: true,
+      createdAt: formatDateToDisplay(user.createdAt),
+      createdAtISO: user.createdAt ? new Date(user.createdAt).toISOString() : null
+    };
 
       const historicoProcedimentos = (user.historicoProcedimentos || []).map(p => {
         const procedimentoDate = p.dataProcedimento || p.createdAt;

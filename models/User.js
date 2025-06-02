@@ -1,4 +1,3 @@
-
 const mongoose = require("mongoose");
 
 // Schema para procedimentos
@@ -24,14 +23,14 @@ const UserSchema = new mongoose.Schema({
     trim: true,
     required: [true, "Nome completo é obrigatório"]
   },
-cpf: {
-  type: String,
-  unique: false,  // Removida a restrição de único
-  required: false, // Tornado opcional
-  validate: {
-    validator: (v) => !v || /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(v),
-    message: "CPF no formato inválido (000.000.000-00)"
-  }
+  cpf: {
+    type: String,
+    unique: true,
+    required: [true, "CPF é obrigatório"],
+    validate: {
+      validator: (v) => /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(v),
+      message: "CPF no formato inválido (000.000.000-00)"
+    }
   },
   telefone: {
     type: String,

@@ -42,6 +42,20 @@ module.exports = class AuthRegisterUserController {
           }, {})
         });
       }
+      if (userData.cpf) {
+        // Limpa e formata o CPF se fornecido
+        const cpfLimpo = userData.cpf.replace(/\D/g, '');
+        if (cpfLimpo.length !== 11) {
+          return res.status(422).json({
+            message: "CPF deve conter 11 dígitos quando fornecido",
+            errors: { cpf: "CPF inválido" }
+          });
+        }
+        userData.cpf = `${cpfLimpo.slice(0, 3)}.${cpfLimpo.slice(3, 6)}.${cpfLimpo.slice(6, 9)}-${cpfLimpo.slice(9, 11)}`;
+      } else {
+        // Se não fornecido, define como null
+        userData.cpf = null;
+      }
 
       const userData = req.body;
 
@@ -206,27 +220,27 @@ module.exports = class AuthRegisterUserController {
     }
   }
 
-static async getAllUsers(req, res) {
-  try {
-    console.log('[API] Buscando usuários...');
-    console.log('[API] Usuário autenticado ID:', req.userId);
+  static async getAllUsers(req, res) {
+    try {
+      console.log('[API] Buscando usuários...');
+      console.log('[API] Usuário autenticado ID:', req.userId);
 
-    const users = await User.find({})
-      .select('-password -__v')
-      .sort({ createdAt: -1 });
+      const users = await User.find({})
+        .select('-password -__v')
+        .sort({ createdAt: -1 });
 
-    console.log(`[API] ${users.length} usuários encontrados`);
-    res.json(users);
+      console.log(`[API] ${users.length} usuários encontrados`);
+      res.json(users);
 
-  } catch (error) {
-    console.error('[API] Erro crítico:', error);
-    res.status(500).json({ 
-      success: false,
-      message: "Erro no servidor",
-      error: process.env.NODE_ENV === 'development' ? error.message : null
-    });
+    } catch (error) {
+      console.error('[API] Erro crítico:', error);
+      res.status(500).json({
+        success: false,
+        message: "Erro no servidor",
+        error: process.env.NODE_ENV === 'development' ? error.message : null
+      });
+    }
   }
-}
 
   static async updateUser(req, res) {
     try {
@@ -321,7 +335,7 @@ static async getAllUsers(req, res) {
     }
   }
 
-static async loginUser(req, res) {
+  static async loginUser(req, res) {
     try {
       const { cpf, password } = req.body;
 
@@ -355,9 +369,9 @@ static async loginUser(req, res) {
       }
 
       // Token com menos dados no payload
-       const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-            expiresIn: "24h" // Alterado de "30d" para "24h"
-        });
+      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+        expiresIn: "24h" // Alterado de "30d" para "24h"
+      });
 
       // Resposta mais enxuta (mantendo a estrutura original)
       res.status(200).json({
@@ -375,7 +389,7 @@ static async loginUser(req, res) {
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
-}
+  }
 
   static async getProntuario(req, res) {
     try {

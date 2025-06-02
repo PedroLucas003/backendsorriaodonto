@@ -398,15 +398,26 @@ module.exports = class AuthRegisterUserController {
       const { cpf, password } = req.body;
 
       // Validação dos campos obrigatórios
-      if (!cpf || !password) {
+      if (!password) {  // Apenas password é obrigatório
+      return res.status(422).json({
+        message: "Erro de validação",
+        errors: {
+          password: "Senha é obrigatória"
+        }
+      });
+    }
+
+    // Se CPF foi fornecido, limpa e valida
+    if (cpf && cpf.trim() !== "") {
+      const cpfLimpo = cpf.replace(/\D/g, '');
+      if (cpfLimpo.length !== 11) {
         return res.status(422).json({
-          message: "Erro de validação",
-          errors: {
-            cpf: !cpf ? "CPF é obrigatório" : undefined,
-            password: !password ? "Senha é obrigatória" : undefined
-          }
+          message: "CPF deve ter 11 dígitos quando fornecido",
+          errors: { cpf: "CPF inválido" }
         });
       }
+      // Continua o processamento com CPF válido
+    }
 
       // Limpa o CPF (remove caracteres não numéricos)
       const cleanedCPF = cpf.replace(/\D/g, '');

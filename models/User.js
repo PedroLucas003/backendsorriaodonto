@@ -3,17 +3,17 @@ const mongoose = require("mongoose");
 
 // Schema para procedimentos
 const ProcedimentoSchema = new mongoose.Schema({
-  procedimento: { type: String, required: true },
-  denteFace: { type: String, required: true },
-  profissional: { type: String, required: true },
+  procedimento: { type: String, required: false }, // Alterado para false
+  denteFace: { type: String, required: false },   // Alterado para false
+  profissional: { type: String, required: false }, // Alterado para false
   modalidadePagamento: {
     type: String,
     enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto"],
-    required: true
+    required: false // Alterado para false
   },
-  valor: { type: Number, min: 0, required: true },
+  valor: { type: Number, min: 0, required: false }, // Alterado para false
   dataProcedimento: { type: Date, required: false },
-  dataNovoProcedimento: { type: Date, required: true }
+  dataNovoProcedimento: { type: Date, required: false } // Alterado para false se desejar
 }, { timestamps: true });
 
 // Schema principal do usuário
@@ -149,27 +149,27 @@ const UserSchema = new mongoose.Schema({
   procedimento: {
     type: String,
     trim: true,
-    required: [true, "Procedimento é obrigatório"]
+    required: false
   },
   denteFace: {
     type: String,
     trim: true,
-    required: [true, "Dente/Face é obrigatório"]
+    required: false
   },
   valor: {
     type: Number,
     min: 0,
-    required: [true, "Valor é obrigatório"]
+    required: false
   },
   modalidadePagamento: {
     type: String,
     enum: ["Dinheiro", "Cartão de Crédito", "Cartão de Débito", "PIX", "Convênio", "Boleto"],
-    required: [true, "Modalidade de pagamento é obrigatória"]
+    required: false
   },
   profissional: {
     type: String,
     trim: true,
-    required: [true, "Profissional é obrigatório"]
+    required: false
   },
   // No UserSchema
   dataProcedimento: {

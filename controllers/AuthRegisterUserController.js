@@ -30,91 +30,93 @@ const validateUserData = (userData) => {
 
 module.exports = class AuthRegisterUserController {
   static async registerUser(req, res) {
-    try {
-      // Validação dos dados
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          message: "Erro de validação",
-          errors: errors.array().reduce((acc, err) => {
-            acc[err.param] = err.msg;
-            return acc;
-          }, {})
-        });
-      }
-      if (userData.cpf) {
-        // Limpa e formata o CPF se fornecido
-        const cpfLimpo = userData.cpf.replace(/\D/g, '');
-        if (cpfLimpo.length !== 11) {
-          return res.status(422).json({
-            message: "CPF deve conter 11 dígitos quando fornecido",
-            errors: { cpf: "CPF inválido" }
-          });
-        }
-        userData.cpf = `${cpfLimpo.slice(0, 3)}.${cpfLimpo.slice(3, 6)}.${cpfLimpo.slice(6, 9)}-${cpfLimpo.slice(9, 11)}`;
-      } else {
-        // Se não fornecido, define como null
-        userData.cpf = null;
-      }
+  try {
+    const userData = req.body;
 
-      const userData = req.body;
-
-      // Valida senha
-      if (userData.password !== userData.confirmPassword) {
-        return res.status(422).json({
-          message: "Erro de validação",
-          errors: { confirmPassword: "As senhas não coincidem!" }
-        });
-      }
-
-      // Validações adicionais
-      const validationErrors = validateUserData(userData);
-      if (validationErrors) {
-        return res.status(400).json({
-          message: "Erro de validação",
-          errors: validationErrors
-        });
-      }
-
-      // Hash da senha
-      userData.password = await bcrypt.hash(userData.password, 12);
-
-      // Cria usuário
-      const user = await User.create(userData);
-
-      // Remove senha da resposta
-      const userResponse = user.toObject();
-      delete userResponse.password;
-
-      res.status(201).json({
-        message: "Usuário cadastrado com sucesso!",
-        user: userResponse
-      });
-    } catch (error) {
-      console.error("Erro ao cadastrar usuário:", error);
-
-      // Tratamento de erros do Mongoose
-      if (error.name === 'ValidationError') {
-        const mongooseErrors = formatMongooseErrors(error);
-        return res.status(400).json({
-          message: "Erro de validação",
-          errors: mongooseErrors || error.message
-        });
-      }
-
-      if (error.code === 11000) {
-        return res.status(400).json({
-          message: "Erro ao cadastrar usuário",
-          error: "CPF ou E-mail já cadastrado"
-        });
-      }
-
-      res.status(500).json({
-        message: "Erro interno no servidor",
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    // Validação dos dados com express-validator
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        message: "Erro de validação",
+        errors: errors.array().reduce((acc, err) => {
+          acc[err.param] = err.msg;
+          return acc;
+        }, {})
       });
     }
+
+    // Validação específica do CPF (opcional)
+    if (userData.cpf) {
+      const cpfLimpo = userData.cpf.replace(/\D/g, '');
+      if (cpfLimpo.length !== 11) {
+        return res.status(422).json({
+          message: "CPF deve conter 11 dígitos quando fornecido",
+          errors: { cpf: "CPF inválido" }
+        });
+      }
+      // Armazena apenas os dígitos (sem formatação)
+      userData.cpf = cpfLimpo;
+    } else {
+      userData.cpf = null; // Garante null se não fornecido
+    }
+
+    // Validação de senha
+    if (userData.password !== userData.confirmPassword) {
+      return res.status(422).json({
+        message: "Erro de validação",
+        errors: { confirmPassword: "As senhas não coincidem!" }
+      });
+    }
+
+    // Validações adicionais personalizadas
+    const validationErrors = validateUserData(userData);
+    if (validationErrors) {
+      return res.status(400).json({
+        message: "Erro de validação",
+        errors: validationErrors
+      });
+    }
+
+    // Hash da senha
+    userData.password = await bcrypt.hash(userData.password, 12);
+
+    // Cria usuário
+    const user = await User.create(userData);
+
+    // Remove senha da resposta
+    const userResponse = user.toObject();
+    delete userResponse.password;
+
+    res.status(201).json({
+      message: "Usuário cadastrado com sucesso!",
+      user: userResponse
+    });
+
+  } catch (error) {
+    console.error("Erro ao cadastrar usuário:", error);
+
+    // Tratamento de erros do Mongoose
+    if (error.name === 'ValidationError') {
+      const mongooseErrors = formatMongooseErrors(error);
+      return res.status(400).json({
+        message: "Erro de validação",
+        errors: mongooseErrors || error.message
+      });
+    }
+
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: "Erro ao cadastrar usuário",
+        error: "CPF ou E-mail já cadastrado"
+      });
+    }
+
+    res.status(500).json({
+      message: "Erro interno no servidor",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
+}
 
 
   static async refreshToken(req, res) {

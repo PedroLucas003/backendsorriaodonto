@@ -393,12 +393,12 @@ static async loginUser(req, res) {
     }
 
     // 2. Verifica formato do CPF (opcional, mas recomendado)
-    const cpfRegex = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/;
-    if (!cpfRegex.test(cpf)) {
-      return res.status(400).json({
-        message: "Formato de CPF inválido. Use: 000.000.000-00",
-      });
-    }
+    const cpfRegex = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/; // Mantém o mesmo formato, mas corrige a lógica
+if (!cpfRegex.test(cpf)) {
+  return res.status(400).json({
+    message: "Formato de CPF inválido. Use: 000.000.000-00 (com pontos e traço)",
+  });
+}
 
     // 3. Busca o paciente COM o CPF formatado (igual ao banco)
     const user = await User.findOne({ cpf: cpf }).select('+password');

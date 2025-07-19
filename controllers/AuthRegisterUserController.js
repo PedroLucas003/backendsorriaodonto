@@ -378,159 +378,67 @@ static async loginUser(req, res) {
 }
 
   static async getProntuario(req, res) {
-    try {
-      const { cpf, password } = req.body;
+  try {
+    const { cpf, password } = req.body;
 
-      // Validação dos campos obrigatórios
-      if (!cpf || !password) {
-        return res.status(422).json({
-          message: "Erro de validação",
-          errors: {
-            cpf: !cpf ? "CPF é obrigatório" : undefined,
-            password: !password ? "Senha é obrigatória" : undefined
-          }
-        });
-      }
-
-      // // Limpa o CPF (remove caracteres não numéricos)
-      // const cleanedCPF = cpf.replace(/\D/g, '');
-
-      // Busca o usuário no banco de dados (incluindo a senha para validação)
-      const user = await User.findOne({ cpf: cleanedCPF }).select('+password');
-
-      if (!user) {
-        return res.status(404).json({
-          message: "Paciente não encontrado!",
-          error: "NOT_FOUND"
-        });
-      }
-
-      // Valida a senha
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      if (!isPasswordValid) {
-        return res.status(401).json({
-          message: "Credenciais inválidas",
-          error: "INVALID_CREDENTIALS"
-        });
-      }
-
-      // Função para formatar datas de forma segura
-      const safeFormatDate = (date) => {
-        try {
-          if (!date) return null;
-          // Converte para objeto Date se for string
-          const d = date instanceof Date ? date : new Date(date);
-          return isNaN(d.getTime()) ? null : d;
-        } catch (e) {
-          console.error("Erro ao formatar data:", e);
-          return null;
+    // 1. Validação básica
+    if (!cpf || !password) {
+      return res.status(422).json({
+        message: "Erro de validação",
+        errors: {
+          cpf: !cpf ? "CPF é obrigatório" : undefined,
+          password: !password ? "Senha é obrigatória" : undefined
         }
-      };
-
-      // Função para formatar data no formato DD/MM/AAAA para exibição
-      const formatDateToDisplay = (date) => {
-        const d = safeFormatDate(date);
-        if (!d) return null;
-
-        const day = String(d.getDate()).padStart(2, '0');
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const year = d.getFullYear();
-
-        return `${day}/${month}/${year}`;
-      };
-
-      // Prepara os procedimentos (principal + histórico)
-      const procedimentoPrincipal = {
-        procedimento: user.procedimento || "",
-        denteFace: user.denteFace || "",
-        valor: user.valor || 0,
-        modalidadePagamento: user.modalidadePagamento || "",
-        profissional: user.profissional || "",
-        dataProcedimento: formatDateToDisplay(user.dataProcedimento),
-        dataProcedimentoISO: user.dataProcedimento ? new Date(user.dataProcedimento).toISOString() : null,
-        dataNovoProcedimento: formatDateToDisplay(user.dataNovoProcedimento),
-        dataNovoProcedimentoISO: user.dataNovoProcedimento ? new Date(user.dataNovoProcedimento).toISOString() : null,
-        isPrincipal: true,
-        createdAt: formatDateToDisplay(user.createdAt),
-        createdAtISO: user.createdAt ? new Date(user.createdAt).toISOString() : null
-      };
-
-      const historicoProcedimentos = (user.historicoProcedimentos || []).map(p => {
-        const procedimentoDate = p.dataProcedimento || p.createdAt;
-        const novoProcedimentoDate = p.dataNovoProcedimento || p.createdAt;
-
-        return {
-          ...p.toObject(),
-          dataProcedimento: formatDateToDisplay(procedimentoDate),
-          dataProcedimentoISO: procedimentoDate ? new Date(procedimentoDate).toISOString() : null,
-          dataNovoProcedimento: formatDateToDisplay(novoProcedimentoDate),
-          dataNovoProcedimentoISO: novoProcedimentoDate ? new Date(novoProcedimentoDate).toISOString() : null,
-          isPrincipal: false,
-          createdAt: formatDateToDisplay(p.createdAt),
-          createdAtISO: p.createdAt ? new Date(p.createdAt).toISOString() : null
-        };
-      });
-
-      // Ordena todos os procedimentos por data (do mais recente para o mais antigo)
-      const todosProcedimentos = [procedimentoPrincipal, ...historicoProcedimentos]
-        .sort((a, b) => {
-          // Usa dataNovoProcedimento como prioridade, se existir
-          const dateA = safeFormatDate(a.dataNovoProcedimentoISO || a.dataProcedimentoISO || a.createdAtISO);
-          const dateB = safeFormatDate(b.dataNovoProcedimentoISO || b.dataProcedimentoISO || b.createdAtISO);
-          return (dateB?.getTime() || 0) - (dateA?.getTime() || 0);
-        });
-
-      // Prepara o objeto de retorno com todos os dados do prontuário
-      const prontuario = {
-        dadosPessoais: {
-          nomeCompleto: user.nomeCompleto,
-          cpf: user.cpf,
-          telefone: user.telefone,
-          endereco: user.endereco,
-          dataNascimento: formatDateToDisplay(user.dataNascimento),
-          dataNascimentoISO: user.dataNascimento ? new Date(user.dataNascimento).toISOString() : null,
-          image: user.image
-        },
-        saude: {
-          detalhesDoencas: user.detalhesDoencas,
-          quaisRemedios: user.quaisRemedios,
-          quaisMedicamentos: user.quaisMedicamentos,
-          quaisAnestesias: user.quaisAnestesias,
-          habitos: {
-            frequenciaFumo: user.habitos?.frequenciaFumo || "Nunca",
-            frequenciaAlcool: user.habitos?.frequenciaAlcool || "Nunca"
-          },
-          historicoCirurgia: user.historicoCirurgia,
-          respiracao: user.respiracao,
-          peso: user.peso
-        },
-        exames: {
-          exameSangue: user.exames?.exameSangue,
-          coagulacao: user.exames?.coagulacao,
-          cicatrizacao: user.exames?.cicatrizacao,
-          sangramentoPosProcedimento: user.sangramentoPosProcedimento
-        },
-        odontologico: {
-          historicoOdontologico: user.historicoOdontologico
-        },
-        procedimentos: todosProcedimentos
-      };
-
-      return res.status(200).json({
-        success: true,
-        message: "Prontuário recuperado com sucesso",
-        data: prontuario
-      });
-
-    } catch (error) {
-      console.error("Erro ao buscar prontuário:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Erro interno no servidor",
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
+
+    // 2. Verifica formato do CPF (opcional, mas recomendado)
+    const cpfRegex = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/;
+    if (!cpfRegex.test(cpf)) {
+      return res.status(400).json({
+        message: "Formato de CPF inválido. Use: 000.000.000-00",
+      });
+    }
+
+    // 3. Busca o paciente COM o CPF formatado (igual ao banco)
+    const user = await User.findOne({ cpf: cpf }).select('+password');
+
+    if (!user) {
+      return res.status(404).json({
+        message: "Paciente não encontrado!",
+        error: "NOT_FOUND"
+      });
+    }
+
+    // 4. Valida a senha
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        message: "Credenciais inválidas",
+        error: "INVALID_CREDENTIALS"
+      });
+    }
+
+    // 5. Formata os dados do prontuário (mantenha seu código atual aqui)
+    const prontuario = {
+      // ... (seu código existente de formatação)
+    };
+
+    return res.status(200).json({
+      success: true,
+      message: "Prontuário recuperado com sucesso",
+      data: prontuario
+    });
+
+  } catch (error) {
+    console.error("Erro ao buscar prontuário:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erro interno no servidor",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
+}
 
   static async addProcedimento(req, res) {
     try {

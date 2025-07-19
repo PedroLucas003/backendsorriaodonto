@@ -1,3 +1,5 @@
+// No seu controllers/AuthRegisterUserController.js
+
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -206,27 +208,27 @@ module.exports = class AuthRegisterUserController {
     }
   }
 
-static async getAllUsers(req, res) {
-  try {
-    console.log('[API] Buscando usuários...');
-    console.log('[API] Usuário autenticado ID:', req.userId);
+  static async getAllUsers(req, res) {
+    try {
+      console.log('[API] Buscando usuários...');
+      console.log('[API] Usuário autenticado ID:', req.userId);
 
-    const users = await User.find({})
-      .select('-password -__v')
-      .sort({ createdAt: -1 });
+      const users = await User.find({})
+        .select('-password -__v')
+        .sort({ createdAt: -1 });
 
-    console.log(`[API] ${users.length} usuários encontrados`);
-    res.json(users);
+      console.log(`[API] ${users.length} usuários encontrados`);
+      res.json(users);
 
-  } catch (error) {
-    console.error('[API] Erro crítico:', error);
-    res.status(500).json({ 
-      success: false,
-      message: "Erro no servidor",
-      error: process.env.NODE_ENV === 'development' ? error.message : null
-    });
+    } catch (error) {
+      console.error('[API] Erro crítico:', error);
+      res.status(500).json({
+        success: false,
+        message: "Erro no servidor",
+        error: process.env.NODE_ENV === 'development' ? error.message : null
+      });
+    }
   }
-}
 
   static async updateUser(req, res) {
     try {
@@ -289,6 +291,13 @@ static async getAllUsers(req, res) {
         });
       }
 
+      if (error.code === 11000) {
+        return res.status(400).json({
+          message: "Erro ao cadastrar usuário",
+          error: "CPF ou E-mail já cadastrado"
+        });
+      }
+
       res.status(500).json({
         message: "Erro interno no servidor",
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -321,7 +330,7 @@ static async getAllUsers(req, res) {
     }
   }
 
-static async loginUser(req, res) {
+  static async loginUser(req, res) {
     try {
       const { cpf, password } = req.body;
 
@@ -355,9 +364,9 @@ static async loginUser(req, res) {
       }
 
       // Token com menos dados no payload
-       const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-            expiresIn: "24h" // Alterado de "30d" para "24h"
-        });
+      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+        expiresIn: "24h" // Alterado de "30d" para "24h"
+      });
 
       // Resposta mais enxuta (mantendo a estrutura original)
       res.status(200).json({
@@ -375,7 +384,7 @@ static async loginUser(req, res) {
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
-}
+  }
 
   static async getProntuario(req, res) {
     try {
@@ -392,11 +401,13 @@ static async loginUser(req, res) {
         });
       }
 
-      // Limpa o CPF (remove caracteres não numéricos)
-      const cleanedCPF = cpf.replace(/\D/g, '');
+      // >>>>> ATENÇÃO: Esta linha FOI REMOVIDA ou COMENTADA <<<<<
+      // Se os CPFs no banco ESTÃO FORMATADOS, NÃO DEVEMOS LIMPAR AQUI.
+      // const cleanedCPF = cpf.replace(/\D/g, ''); // LINHA REMOVIDA/COMENTADA!
 
       // Busca o usuário no banco de dados (incluindo a senha para validação)
-      const user = await User.findOne({ cpf: cleanedCPF }).select('+password');
+      // A busca agora usa o CPF EXATAMENTE como ele vem do frontend (com pontos e traço)
+      const user = await User.findOne({ cpf: cpf }).select('+password');
 
       if (!user) {
         return res.status(404).json({

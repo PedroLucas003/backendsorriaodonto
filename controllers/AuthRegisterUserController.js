@@ -1,7 +1,7 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { validationResult } = require('express-validator'); // Certifique-se de que está sendo usado onde deveria, neste arquivo não vejo uso direto
+const { validationResult } = require('express-validator');
 
 // Função para formatar erros do Mongoose (Mantido)
 const formatMongooseErrors = (error) => {
@@ -25,7 +25,6 @@ const validateUserData = (userData) => {
 
 module.exports = class AuthRegisterUserController {
     static async registerUser(req, res) {
-        // ... (Seu código existente para registerUser, mantido inalterado)
         try {
             const errors = validationResult(req);
             if (!errors.isEmpty()) {
@@ -87,7 +86,6 @@ module.exports = class AuthRegisterUserController {
     }
 
     static async refreshToken(req, res) {
-        // ... (Seu código existente para refreshToken, mantido inalterado)
         try {
             const oldToken = req.headers.authorization?.split(' ')[1];
             if (!oldToken) {
@@ -105,7 +103,6 @@ module.exports = class AuthRegisterUserController {
     }
 
     static async updateProcedimento(req, res) {
-        // ... (Seu código existente para updateProcedimento, mantido inalterado)
         try {
             const { id, procedimentoId } = req.params;
             const procedimentoData = req.body;
@@ -149,9 +146,8 @@ module.exports = class AuthRegisterUserController {
     }
 
     static async deleteProcedimento(req, res) {
-        // ... (Seu código existente para deleteProcedimento, mantido inalterado)
         try {
-            const { id, procedimentoId } = req.params;
+            const { id } = req.params;
             const updatedUser = await User.findByIdAndUpdate(
                 id,
                 { $pull: { historicoProcedimentos: { _id: procedimentoId } } },
@@ -176,7 +172,6 @@ module.exports = class AuthRegisterUserController {
     }
 
     static async getAllUsers(req, res) {
-        // ... (Seu código existente para getAllUsers, mantido inalterado)
         try {
             console.log('[API] Buscando usuários...');
             console.log('[API] Usuário autenticado ID:', req.userId);
@@ -196,7 +191,6 @@ module.exports = class AuthRegisterUserController {
     }
 
     static async updateUser(req, res) {
-        // ... (Seu código existente para updateUser, mantido inalterado)
         try {
             const { id } = req.params;
             const userData = req.body;
@@ -253,7 +247,6 @@ module.exports = class AuthRegisterUserController {
     }
 
     static async deleteUser(req, res) {
-        // ... (Seu código existente para deleteUser, mantido inalterado)
         try {
             const { id } = req.params;
             const deletedUser = await User.findByIdAndDelete(id);
@@ -276,26 +269,30 @@ module.exports = class AuthRegisterUserController {
         }
     }
 
+    // ***** FUNÇÃO loginUser REVERTIDA PARA A LÓGICA ORIGINAL *****
     static async loginUser(req, res) {
-        // ... (Seu código existente para loginUser, mantido inalterado)
         try {
             const { cpf, password } = req.body;
+
             if (!cpf || !password) {
                 return res.status(422).json({
                     message: "CPF e senha são obrigatórios",
                     error: "MISSING_CREDENTIALS"
                 });
             }
-            const cpfLimpo = cpf.replace(/\D/g, ''); // Limpa o CPF para login se o banco usar CPF limpo no login
-            // Atenção: Se seu login também usa o CPF formatado no banco, remova a linha acima
-            // e use "const user = await User.findOne({ cpf: cpf }).select('+password').lean();"
-            const user = await User.findOne({ cpf: cpfLimpo }).select('+password').lean(); // Ajuste aqui se login usa CPF formatado
+
+            // A busca agora usa o 'cpf' como vem da requisição
+            // Se o seu banco armazena o CPF com pontos e traços, o frontend
+            // do login precisa enviar com pontos e traços.
+            const user = await User.findOne({ cpf: cpf }).select('+password').lean(); // VOLTOU A USAR 'cpf' DIRETO
+
             if (!user) {
                 return res.status(401).json({
                     message: "Credenciais inválidas",
                     error: "INVALID_CREDENTIALS"
                 });
             }
+
             const isPasswordValid = await bcrypt.compare(password, user.password);
             if (!isPasswordValid) {
                 return res.status(401).json({
@@ -303,9 +300,11 @@ module.exports = class AuthRegisterUserController {
                     error: "INVALID_CREDENTIALS"
                 });
             }
+
             const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
                 expiresIn: "24h"
             });
+
             res.status(200).json({
                 token,
                 user: {
@@ -323,6 +322,7 @@ module.exports = class AuthRegisterUserController {
         }
     }
 
+    // ***** FUNÇÃO getProntuario COM AS MELHORIAS RECENTES *****
     static async getProntuario(req, res) {
         try {
             const { cpf, password } = req.body; // CPF virá formatado do frontend (ex: "122.061.544-71")
@@ -338,9 +338,7 @@ module.exports = class AuthRegisterUserController {
                 });
             }
 
-            // 2. Valida o formato do CPF (se necessário, de acordo com o Mongoose Schema)
-            // Seu Schema já valida /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.
-            // Portanto, a validação aqui DEVE esperar o CPF já formatado.
+            // 2. Valida o formato do CPF (essencial, pois o Schema espera assim)
             const cpfRegex = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/;
             if (!cpfRegex.test(cpf)) {
                 return res.status(400).json({
@@ -420,8 +418,6 @@ module.exports = class AuthRegisterUserController {
 
         } catch (error) {
             console.error("Erro ao buscar prontuário:", error);
-            // Erros de validação do Mongoose não devem ocorrer aqui se o Schema está certo
-            // Mas outros erros internos podem
             return res.status(500).json({
                 success: false,
                 message: "Erro interno no servidor ao buscar prontuário.",
@@ -431,7 +427,6 @@ module.exports = class AuthRegisterUserController {
     }
 
     static async addProcedimento(req, res) {
-        // ... (Seu código existente para addProcedimento, mantido inalterado)
         try {
             const { id } = req.params;
             const procedimentoData = req.body;

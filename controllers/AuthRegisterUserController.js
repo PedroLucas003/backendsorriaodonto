@@ -106,6 +106,8 @@ module.exports = class AuthRegisterUserController {
         try {
             const { id, procedimentoId } = req.params;
             const procedimentoData = req.body;
+
+            // Validação básica para garantir que os campos necessários estão presentes
             if (!procedimentoData.procedimento || !procedimentoData.denteFace ||
                 !procedimentoData.valor || !procedimentoData.dataProcedimento) {
                 return res.status(400).json({
@@ -113,6 +115,16 @@ module.exports = class AuthRegisterUserController {
                     error: "MISSING_FIELDS"
                 });
             }
+
+            // Conversão da data para o formato correto antes de salvar no banco
+            const dataProcedimento = new Date(procedimentoData.dataProcedimento);
+            if (isNaN(dataProcedimento.getTime())) {
+                return res.status(400).json({
+                    message: "Data inválida",
+                    error: "INVALID_DATE"
+                });
+            }
+
             const updatedUser = await User.findOneAndUpdate(
                 { _id: id, "historicoProcedimentos._id": procedimentoId },
                 {
@@ -120,18 +132,20 @@ module.exports = class AuthRegisterUserController {
                         "historicoProcedimentos.$": {
                             ...procedimentoData,
                             _id: procedimentoId,
-                            dataProcedimento: new Date(procedimentoData.dataProcedimento),
+                            dataProcedimento: dataProcedimento, // Usa a data convertida
                         }
                     }
                 },
                 { new: true, runValidators: true }
             );
+
             if (!updatedUser) {
                 return res.status(404).json({
                     message: "Procedimento não encontrado",
                     error: "NOT_FOUND"
                 });
             }
+
             res.status(200).json({
                 message: "Procedimento atualizado com sucesso!",
                 procedimento: updatedUser.historicoProcedimentos.id(procedimentoId)
@@ -450,45 +464,45 @@ module.exports = class AuthRegisterUserController {
     }
 
     static async addProcedimento(req, res) {
-    try {
-        const { id } = req.params;
-        const procedimentoData = req.body;
-        if (!procedimentoData.dataProcedimento) {
-            return res.status(400).json({
-                message: "Data do procedimento é obrigatória",
-                error: "INVALID_DATE"
+        try {
+            const { id } = req.params;
+            const procedimentoData = req.body;
+            if (!procedimentoData.dataProcedimento) {
+                return res.status(400).json({
+                    message: "Data do procedimento é obrigatória",
+                    error: "INVALID_DATE"
+                });
+            }
+            const dataProcedimento = new Date(procedimentoData.dataProcedimento);
+            if (isNaN(dataProcedimento.getTime())) {
+                return res.status(400).json({
+                    message: "Data inválida",
+                    error: "INVALID_DATE"
+                });
+            }
+            const novoProcedimento = {
+                procedimento: procedimentoData.procedimento,
+                denteFace: procedimentoData.denteFace,
+                valor: procedimentoData.valor,
+                modalidadePagamento: procedimentoData.modalidadePagamento,
+                profissional: procedimentoData.profissional,
+                dataProcedimento: dataProcedimento
+            };
+            const updatedUser = await User.findByIdAndUpdate(
+                id,
+                { $push: { historicoProcedimentos: novoProcedimento } },
+                { new: true, runValidators: true }
+            );
+            const ultimoProcedimento = updatedUser.historicoProcedimentos[updatedUser.historicoProcedimentos.length - 1];
+            res.status(201).json({
+                message: "Procedimento adicionado com sucesso!",
+                procedimento: ultimoProcedimento
+            });
+        } catch (error) {
+            console.error("Erro ao adicionar procedimento:", error);
+            res.status(500).json({
+                message: error.message || "Erro interno no servidor"
             });
         }
-        const dataProcedimento = new Date(procedimentoData.dataProcedimento);
-        if (isNaN(dataProcedimento.getTime())) {
-            return res.status(400).json({
-                message: "Data inválida",
-                error: "INVALID_DATE"
-            });
-        }
-        const novoProcedimento = {
-            procedimento: procedimentoData.procedimento,
-            denteFace: procedimentoData.denteFace,
-            valor: procedimentoData.valor,
-            modalidadePagamento: procedimentoData.modalidadePagamento,
-            profissional: procedimentoData.profissional,
-            dataProcedimento: dataProcedimento
-        };
-        const updatedUser = await User.findByIdAndUpdate(
-            id,
-            { $push: { historicoProcedimentos: novoProcedimento } },
-            { new: true, runValidators: true }
-        );
-        const ultimoProcedimento = updatedUser.historicoProcedimentos[updatedUser.historicoProcedimentos.length - 1];
-        res.status(201).json({
-            message: "Procedimento adicionado com sucesso!",
-            procedimento: ultimoProcedimento
-        });
-    } catch (error) {
-        console.error("Erro ao adicionar procedimento:", error);
-        res.status(500).json({
-            message: error.message || "Erro interno no servidor"
-        });
     }
-}
 };

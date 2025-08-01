@@ -104,8 +104,9 @@ module.exports = class AuthRegisterUserController {
 
     static async updateProcedimento(req, res) {
         try {
-            const { id, procedimentoId } = req.params;
+            const { id, procedimentoId } = req.params; // CORRIGIDO: Extrai o ID do usuário e o ID do procedimento
             const procedimentoData = req.body;
+
             if (!procedimentoData.procedimento || !procedimentoData.denteFace ||
                 !procedimentoData.valor || !procedimentoData.dataNovoProcedimento) {
                 return res.status(400).json({
@@ -113,25 +114,30 @@ module.exports = class AuthRegisterUserController {
                     error: "MISSING_FIELDS"
                 });
             }
+
             const updatedUser = await User.findOneAndUpdate(
-                { _id: id, "historicoProcedimentos._id": procedimentoId },
+                { _id: id, "historicoProcedimentos._id": procedimentoId }, // CORRIGIDO: Usa o _id do procedimento para encontrar o item
                 {
                     $set: {
                         "historicoProcedimentos.$": {
                             ...procedimentoData,
                             _id: procedimentoId,
+                            // Garante que a data é salva como um objeto Date
+                            dataProcedimento: new Date(procedimentoData.dataNovoProcedimento),
                             dataNovoProcedimento: new Date(procedimentoData.dataNovoProcedimento)
                         }
                     }
                 },
                 { new: true }
             );
+
             if (!updatedUser) {
                 return res.status(404).json({
                     message: "Procedimento não encontrado",
                     error: "NOT_FOUND"
                 });
             }
+
             res.status(200).json({
                 message: "Procedimento atualizado com sucesso!",
                 procedimento: updatedUser.historicoProcedimentos.id(procedimentoId)
@@ -145,31 +151,34 @@ module.exports = class AuthRegisterUserController {
         }
     }
 
-    static async deleteProcedimento(req, res) {
-        try {
-            const { id } = req.params;
-            const updatedUser = await User.findByIdAndUpdate(
-                id,
-                { $pull: { historicoProcedimentos: { _id: procedimentoId } } },
-                { new: true }
-            );
-            if (!updatedUser) {
-                return res.status(404).json({
-                    message: "Usuário não encontrado",
-                    error: "NOT_FOUND"
-                });
-            }
-            res.status(200).json({
-                message: "Procedimento excluído com sucesso!",
-                userId: id
-            });
-        } catch (error) {
-            console.error("Erro ao excluir procedimento:", error);
-            res.status(500).json({
-                message: error.message || "Erro interno no servidor"
+   static async deleteProcedimento(req, res) {
+    try {
+        const { id, procedimentoId } = req.params; // Certo!
+
+        const updatedUser = await User.findByIdAndUpdate(
+            id,
+            { $pull: { historicoProcedimentos: { _id: procedimentoId } } }, // A lógica de exclusão está correta
+            { new: true }
+        );
+
+        if (!updatedUser) {
+            return res.status(404).json({
+                message: "Usuário ou procedimento não encontrado",
+                error: "NOT_FOUND"
             });
         }
+        
+        res.status(200).json({
+            message: "Procedimento excluído com sucesso!",
+            userId: id
+        });
+    } catch (error) {
+        console.error("Erro ao excluir procedimento:", error);
+        res.status(500).json({
+            message: error.message || "Erro interno no servidor"
+        });
     }
+}
 
     static async getAllUsers(req, res) {
         try {

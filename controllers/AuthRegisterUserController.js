@@ -306,64 +306,58 @@ module.exports = class AuthRegisterUserController {
         }
     }
 
+    // ***** FUNÇÃO loginUser REVERTIDA PARA A LÓGICA ORIGINAL *****
     static async loginUser(req, res) {
-    try {
-        const { cpf, password } = req.body;
+        try {
+            const { cpf, password } = req.body;
 
-        if (!cpf || !password) {
-            return res.status(422).json({
-                message: "CPF e senha são obrigatórios",
-                error: "MISSING_CREDENTIALS"
-            });
-        }
-        
-        // Trecho de código para otimização:
-        // 1. Remove todos os caracteres não numéricos do CPF antes da busca.
-        const cleanedCpf = cpf.replace(/\D/g, '');
-
-        // 2. Faz a busca no banco de dados usando o CPF limpo.
-        // Se o seu banco armazena o CPF formatado, você DEVE buscar com o formato.
-        // Como o seu schema valida o CPF com formatação, a busca deve ser assim:
-        const user = await User.findOne({ cpf: cpf }).select('+password').lean();
-        
-        // Se, por acaso, você decidir armazenar o CPF sem formatação, a busca seria:
-        // const user = await User.findOne({ cpf: cleanedCpf }).select('+password').lean();
-
-        if (!user) {
-            return res.status(401).json({
-                message: "Credenciais inválidas",
-                error: "INVALID_CREDENTIALS"
-            });
-        }
-
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            return res.status(401).json({
-                message: "Credenciais inválidas",
-                error: "INVALID_CREDENTIALS"
-            });
-        }
-
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-            expiresIn: "24h"
-        });
-
-        res.status(200).json({
-            token,
-            user: {
-                id: user._id,
-                nomeCompleto: user.nomeCompleto,
-                role: user.role
+            if (!cpf || !password) {
+                return res.status(422).json({
+                    message: "CPF e senha são obrigatórios",
+                    error: "MISSING_CREDENTIALS"
+                });
             }
-        });
-    } catch (error) {
-        console.error("Erro no login:", error);
-        res.status(500).json({
-            message: "Erro interno no servidor",
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
+
+            // A busca agora usa o 'cpf' como vem da requisição
+            // Se o seu banco armazena o CPF com pontos e traços, o frontend
+            // do login precisa enviar com pontos e traços.
+            const user = await User.findOne({ cpf: cpf }).select('+password').lean(); // VOLTOU A USAR 'cpf' DIRETO
+
+            if (!user) {
+                return res.status(401).json({
+                    message: "Credenciais inválidas",
+                    error: "INVALID_CREDENTIALS"
+                });
+            }
+
+            const isPasswordValid = await bcrypt.compare(password, user.password);
+            if (!isPasswordValid) {
+                return res.status(401).json({
+                    message: "Credenciais inválidas",
+                    error: "INVALID_CREDENTIALS"
+                });
+            }
+
+            const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+                expiresIn: "24h"
+            });
+
+            res.status(200).json({
+                token,
+                user: {
+                    id: user._id,
+                    nomeCompleto: user.nomeCompleto,
+                    role: user.role
+                }
+            });
+        } catch (error) {
+            console.error("Erro no login:", error);
+            res.status(500).json({
+                message: "Erro interno no servidor",
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
+        }
     }
-}
 
     // ***** FUNÇÃO getProntuario COM AS MELHORIAS RECENTES *****
     static async getProntuario(req, res) {

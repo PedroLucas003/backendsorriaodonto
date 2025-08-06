@@ -84,19 +84,19 @@ const UserSchema = new mongoose.Schema({
     required: [true, "Quais anestesias é obrigatório"]
   },
 
-  // Hábitos (obrigatórios)
+  // Hábitos ()
   habitos: {
     frequenciaFumo: {
-      type: String,
-      enum: ["Nunca", "Ocasionalmente", "Frequentemente", "Diariamente"],
-      required: [true, "Frequência de fumo é obrigatória"]
+        type: String,
+        enum: ["Nunca", "Ocasionalmente", "Frequentemente", "Diariamente"],
+        required: false // Alterado para false
     },
     frequenciaAlcool: {
-      type: String,
-      enum: ["Nunca", "Ocasionalmente", "Frequentemente", "Diariamente"],
-      required: [true, "Frequência de álcool é obrigatória"]
+        type: String,
+        enum: ["Nunca", "Ocasionalmente", "Frequentemente", "Diariamente"],
+        required: false // Alterado para false
     }
-  },
+},
 
   // Exames (obrigatórios)
   exames: {

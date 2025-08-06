@@ -228,17 +228,31 @@ module.exports = class AuthRegisterUserController {
             });
         }
 
-        // Se houver um arquivo na requisição, adiciona o nome ao userData
+        // Cria um objeto de atualização com apenas os campos que foram enviados
+        const updateFields = {};
+        for (const key in userData) {
+            // Exclui campos que não devem ser atualizados diretamente
+            if (key !== 'password' && key !== 'confirmPassword' && key !== '_id' && key !== '__v') {
+                updateFields[key] = userData[key];
+            }
+        }
+        
+        // Se houver um arquivo na requisição, adiciona o nome ao updateFields
         if (req.file) {
-            userData.image = req.file.filename;
+            updateFields.image = req.file.filename;
         }
 
-        // Converter dataNascimento para formato ISO
+        // Se a senha for fornecida, faz o hash antes de salvar
+        if (userData.password) {
+            updateFields.password = await bcrypt.hash(userData.password, 12);
+        }
+
+        // Tratamento dos campos de data para o formato ISO
         if (userData.dataNascimento) {
             const [day, month, year] = userData.dataNascimento.split('/');
             const dateObj = new Date(`${year}-${month}-${day}T12:00:00Z`);
             if (!isNaN(dateObj.getTime())) {
-                userData.dataNascimento = dateObj.toISOString();
+                updateFields.dataNascimento = dateObj.toISOString();
             } else {
                 return res.status(400).json({
                     message: "Erro na data de nascimento. Formato inválido.",
@@ -247,25 +261,13 @@ module.exports = class AuthRegisterUserController {
             }
         }
 
-        // Preservar campos aninhados que não foram enviados
-        if (!userData.habitos) {
-            userData.habitos = existingUser.habitos;
-        }
-        if (!userData.exames) {
-            userData.exames = existingUser.exames;
-        }
-
-        // Se a senha for fornecida, faz o hash antes de salvar
-        if (userData.password) {
-            userData.password = await bcrypt.hash(userData.password, 12);
-        }
-
         const updatedUser = await User.findByIdAndUpdate(
             id,
-            { $set: userData },
+            { $set: updateFields },
             {
-                new: true,
-                runValidators: true
+                new: true, // Retorna o documento atualizado
+                lean: true, // Retorna um objeto JavaScript puro
+                runValidators: true // Garante que as validações do Mongoose sejam executadas
             }
         ).select('-password');
 

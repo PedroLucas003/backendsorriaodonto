@@ -103,61 +103,65 @@ module.exports = class AuthRegisterUserController {
     }
 
     static async updateProcedimento(req, res) {
-        try {
-            const { id, procedimentoId } = req.params;
-            const procedimentoData = req.body;
+    try {
+        const { id, procedimentoId } = req.params;
+        const procedimentoData = req.body;
 
-            // Validação básica para garantir que os campos necessários estão presentes
-            if (!procedimentoData.procedimento || !procedimentoData.denteFace ||
-                !procedimentoData.valor || !procedimentoData.dataProcedimento) {
-                return res.status(400).json({
-                    message: "Todos os campos são obrigatórios",
-                    error: "MISSING_FIELDS"
-                });
-            }
-
-            // Conversão da data para o formato correto antes de salvar no banco
-            const dataProcedimento = new Date(procedimentoData.dataProcedimento);
-            if (isNaN(dataProcedimento.getTime())) {
-                return res.status(400).json({
-                    message: "Data inválida",
-                    error: "INVALID_DATE"
-                });
-            }
-
-            const updatedUser = await User.findOneAndUpdate(
-                { _id: id, "historicoProcedimentos._id": procedimentoId },
-                {
-                    $set: {
-                        "historicoProcedimentos.$": {
-                            ...procedimentoData,
-                            _id: procedimentoId,
-                            dataProcedimento: dataProcedimento, // Usa a data convertida
-                        }
-                    }
-                },
-                { new: true, runValidators: true }
-            );
-
-            if (!updatedUser) {
-                return res.status(404).json({
-                    message: "Procedimento não encontrado",
-                    error: "NOT_FOUND"
-                });
-            }
-
-            res.status(200).json({
-                message: "Procedimento atualizado com sucesso!",
-                procedimento: updatedUser.historicoProcedimentos.id(procedimentoId)
-            });
-        } catch (error) {
-            console.error("Erro ao atualizar procedimento:", error);
-            res.status(500).json({
-                message: "Erro interno no servidor",
-                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        // Validação básica para garantir que os campos necessários estão presentes
+        if (!procedimentoData.procedimento || !procedimentoData.denteFace ||
+            !procedimentoData.valor || !procedimentoData.dataProcedimento) {
+            return res.status(400).json({
+                message: "Todos os campos são obrigatórios",
+                error: "MISSING_FIELDS"
             });
         }
+
+        // --- TRECHO CORRIGIDO ---
+        // Converte a data do formato DD/MM/AAAA para um objeto Date
+        const [day, month, year] = procedimentoData.dataProcedimento.split('/');
+        const dataProcedimento = new Date(`${year}-${month}-${day}T12:00:00Z`);
+
+        if (isNaN(dataProcedimento.getTime())) {
+            return res.status(400).json({
+                message: "Data inválida. Use o formato DD/MM/AAAA.",
+                error: "INVALID_DATE"
+            });
+        }
+        // --- FIM DO TRECHO CORRIGIDO ---
+
+        const updatedUser = await User.findOneAndUpdate(
+            { _id: id, "historicoProcedimentos._id": procedimentoId },
+            {
+                $set: {
+                    "historicoProcedimentos.$": {
+                        ...procedimentoData,
+                        _id: procedimentoId,
+                        dataProcedimento: dataProcedimento, // Usa a data convertida
+                    }
+                }
+            },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedUser) {
+            return res.status(404).json({
+                message: "Procedimento não encontrado",
+                error: "NOT_FOUND"
+            });
+        }
+
+        res.status(200).json({
+            message: "Procedimento atualizado com sucesso!",
+            procedimento: updatedUser.historicoProcedimentos.id(procedimentoId)
+        });
+    } catch (error) {
+        console.error("Erro ao atualizar procedimento:", error);
+        res.status(500).json({
+            message: "Erro interno no servidor",
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
+}
 
     static async deleteProcedimento(req, res) {
         try {

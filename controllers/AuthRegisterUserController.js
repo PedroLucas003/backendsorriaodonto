@@ -205,83 +205,101 @@ module.exports = class AuthRegisterUserController {
     }
 
     static async updateUser(req, res) {
-        try {
-            const { id } = req.params;
-            const userData = req.body;
-            const errors = validationResult(req);
+    try {
+        const { id } = req.params;
+        const userData = req.body;
+        const errors = validationResult(req);
 
-            if (!errors.isEmpty()) {
-                return res.status(400).json({
-                    message: "Erro de validação",
-                    errors: errors.array().reduce((acc, err) => {
-                        acc[err.param] = err.msg;
-                        return acc;
-                    }, {})
-                });
-            }
-
-            const existingUser = await User.findById(id);
-            if (!existingUser) {
-                return res.status(404).json({
-                    message: "Usuário não encontrado.",
-                    error: "NOT_FOUND"
-                });
-            }
-
-            // Se houver um arquivo na requisição, adiciona o nome ao userData
-            if (req.file) {
-                userData.image = req.file.filename;
-            }
-
-            // Se a senha for fornecida, faz o hash antes de salvar
-            if (userData.password) {
-                userData.password = await bcrypt.hash(userData.password, 12);
-            }
-
-            // Tratamento dos campos de data para o formato ISO
-            // Isso é crucial para evitar o erro de data inválida que você estava tendo
-            if (userData.dataNascimento) {
-                const [day, month, year] = userData.dataNascimento.split('/');
-                const dateObj = new Date(`${year}-${month}-${day}T12:00:00Z`);
-                if (!isNaN(dateObj.getTime())) {
-                    userData.dataNascimento = dateObj.toISOString();
-                } else {
-                    return res.status(400).json({
-                        message: "Erro na data de nascimento. Formato inválido.",
-                        error: "INVALID_DATE_FORMAT"
-                    });
-                }
-            }
-
-            const updatedUser = await User.findByIdAndUpdate(
-                id,
-                { $set: userData },
-                {
-                    new: true, // Retorna o documento atualizado
-                    lean: true, // Retorna um objeto JavaScript puro
-                    runValidators: true // Garante que as validações do Mongoose sejam executadas
-                }
-            ).select('-password');
-
-            res.json({
-                message: "Usuário atualizado com sucesso!",
-                user: updatedUser
-            });
-        } catch (error) {
-            console.error("Erro ao atualizar usuário:", error);
-            if (error.name === 'ValidationError') {
-                const mongooseErrors = formatMongooseErrors(error);
-                return res.status(400).json({
-                    message: "Erro de validação",
-                    errors: mongooseErrors || error.message
-                });
-            }
-            res.status(500).json({
-                message: "Erro interno no servidor",
-                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                message: "Erro de validação",
+                errors: errors.array().reduce((acc, err) => {
+                    acc[err.param] = err.msg;
+                    return acc;
+                }, {})
             });
         }
+
+        const existingUser = await User.findById(id);
+        if (!existingUser) {
+            return res.status(404).json({
+                message: "Usuário não encontrado.",
+                error: "NOT_FOUND"
+            });
+        }
+
+        // Se houver um arquivo na requisição, adiciona o nome ao userData
+        if (req.file) {
+            userData.image = req.file.filename;
+        }
+
+        // Se a senha for fornecida, faz o hash antes de salvar
+        if (userData.password) {
+            userData.password = await bcrypt.hash(userData.password, 12);
+        }
+
+        // --- CORREÇÃO APLICADA AQUI ---
+        // Tratamento dos campos de data para o formato ISO
+        // Isso é crucial para evitar o erro de data inválida que você estava tendo
+        if (userData.dataNascimento) {
+            const [day, month, year] = userData.dataNascimento.split('/');
+            const dateObj = new Date(`${year}-${month}-${day}T12:00:00Z`);
+            if (!isNaN(dateObj.getTime())) {
+                userData.dataNascimento = dateObj.toISOString();
+            } else {
+                return res.status(400).json({
+                    message: "Erro na data de nascimento. Formato inválido.",
+                    error: "INVALID_DATE_FORMAT"
+                });
+            }
+        }
+
+        // NOVO TRECHO ADICIONADO PARA CORRIGIR O ERRO
+        if (userData.dataProcedimento) {
+            const [day, month, year] = userData.dataProcedimento.split('/');
+            const dateObj = new Date(`${year}-${month}-${day}T12:00:00Z`);
+            if (!isNaN(dateObj.getTime())) {
+                userData.dataProcedimento = dateObj.toISOString();
+            } else {
+                return res.status(400).json({
+                    message: "Erro na data do procedimento. Formato inválido.",
+                    error: "INVALID_DATE_FORMAT"
+                });
+            }
+        }
+        // --- FIM DA CORREÇÃO ---
+
+
+        // Atualiza o usuário com os novos dados
+        const updatedUser = await User.findByIdAndUpdate(
+            id,
+            { $set: userData },
+            {
+                new: true, // Retorna o documento atualizado
+                lean: true, // Retorna um objeto JavaScript puro
+                runValidators: true // Garante que as validações do Mongoose sejam executadas
+            }
+        ).select('-password');
+
+        res.json({
+            message: "Usuário atualizado com sucesso!",
+            user: updatedUser
+        });
+    } catch (error) {
+        console.error("Erro ao atualizar usuário:", error);
+        if (error.name === 'ValidationError') {
+            const mongooseErrors = formatMongooseErrors(error);
+            return res.status(400).json({
+                message: "Erro de validação",
+                errors: mongooseErrors || error.message
+            });
+        }
+        res.status(500).json({
+            message: "Erro interno no servidor",
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
+}
 
     static async deleteUser(req, res) {
         try {

@@ -103,59 +103,67 @@ module.exports = class AuthRegisterUserController {
     }
 
     static async updateProcedimento(req, res) {
-    try {
-        const { id, procedimentoId } = req.params;
-        const procedimentoData = req.body;
+        try {
+            const { id, procedimentoId } = req.params;
+            const procedimentoData = req.body;
 
-        // ... (suas validações de dados)
-
-        const updateData = {
-            procedimento: procedimentoData.procedimento,
-            denteFace: procedimentoData.denteFace,
-            valor: procedimentoData.valor,
-            modalidadePagamento: procedimentoData.modalidadePagamento,
-            profissional: procedimentoData.profissional,
-            dataProcedimento: new Date(procedimentoData.dataProcedimento)
-        };
-
-        const updatedUser = await User.findOneAndUpdate(
-            { _id: id, "historicoProcedimentos._id": procedimentoId },
-            { $set: { "historicoProcedimentos.$": updateData } },
-            { new: true, runValidators: true }
-        );
-
-        // --- CORREÇÃO ADICIONADA AQUI ---
-        if (!updatedUser) {
-            // Se não encontrou o usuário ou o procedimento, retorna um erro 404 claro.
-            // Isso evita o crash do servidor.
-            return res.status(404).json({
-                message: "Usuário ou procedimento não encontrado. A atualização falhou.",
-                error: "NOT_FOUND"
-            });
-        }
-        // --- FIM DA CORREÇÃO ---
-
-        // Agora que sabemos que updatedUser existe, podemos encontrar o procedimento com segurança.
-        const procedimentoAtualizado = updatedUser.historicoProcedimentos.find(
-             p => p._id.toString() === procedimentoId
-        );
-
-        res.status(200).json({
-            message: "Procedimento atualizado com sucesso!",
-            procedimento: procedimentoAtualizado
-        });
-        } catch (error) {
-            console.error("Erro ao atualizar procedimento:", error);
-            if (error.name === 'ValidationError') {
-                const mongooseErrors = formatMongooseErrors(error);
+            // --- NOVA VERIFICAÇÃO ADICIONADA ---
+            // Garante que o valor é um número válido antes de prosseguir.
+            if (procedimentoData.valor === null || procedimentoData.valor === undefined || isNaN(procedimentoData.valor)) {
                 return res.status(400).json({
-                    message: "Erro de validação no Mongoose",
-                    errors: mongooseErrors || error.message
+                    message: "O campo 'valor' é inválido ou não foi fornecido.",
+                    error: "INVALID_VALUE_FIELD"
                 });
             }
+            // --- FIM DA NOVA VERIFICAÇÃO ---
+
+            // Validação de campos obrigatórios (mantida)
+            if (!procedimentoData.procedimento || !procedimentoData.denteFace || !procedimentoData.dataProcedimento) {
+                return res.status(400).json({
+                    message: "Campos obrigatórios ausentes (procedimento, dente/face, data).",
+                    error: "MISSING_FIELDS"
+                });
+            }
+
+            const updateData = {
+                procedimento: procedimentoData.procedimento,
+                denteFace: procedimentoData.denteFace,
+                valor: Number(procedimentoData.valor), // Garante que é um número
+                modalidadePagamento: procedimentoData.modalidadePagamento,
+                profissional: procedimentoData.profissional,
+                dataProcedimento: new Date(procedimentoData.dataProcedimento)
+            };
+
+            const updatedUser = await User.findOneAndUpdate(
+                { _id: id, "historicoProcedimentos._id": procedimentoId },
+                { $set: { "historicoProcedimentos.$": updateData } },
+                { new: true, runValidators: true }
+            );
+
+            if (!updatedUser) {
+                return res.status(404).json({
+                    message: "Usuário ou procedimento não encontrado. A atualização falhou.",
+                    error: "NOT_FOUND"
+                });
+            }
+
+            const procedimentoAtualizado = updatedUser.historicoProcedimentos.find(
+                p => p._id.toString() === procedimentoId
+            );
+
+            res.status(200).json({
+                message: "Procedimento atualizado com sucesso!",
+                procedimento: procedimentoAtualizado
+            });
+
+        } catch (error) {
+            // Este bloco catch é acionado por erros como o CastError
+            console.error("Erro CRÍTICO ao atualizar procedimento:", error); // O erro real aparecerá aqui no console do servidor
+
             res.status(500).json({
-                message: "Erro interno no servidor",
-                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+                message: "Erro interno no servidor ao tentar atualizar o procedimento.",
+                // Em desenvolvimento, é útil enviar o erro real para o frontend
+                error: process.env.NODE_ENV === 'development' ? error.message : "INTERNAL_SERVER_ERROR"
             });
         }
     }

@@ -177,7 +177,7 @@ const UserSchema = new mongoose.Schema({
   },
   dataNovoProcedimento: { // Novo campo adicionado
     type: Date,
-    required: [true, "Data do novo procedimento é obrigatória"]
+    required: [false, "Data do novo procedimento nao é obrigatória"]
   },
 
   // Histórico de Procedimentos

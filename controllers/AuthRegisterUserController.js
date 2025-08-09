@@ -217,91 +217,89 @@ module.exports = class AuthRegisterUserController {
     }
 
     static async updateUser(req, res) {
-        try {
-            const { id } = req.params;
-            const userData = req.body;
-            const errors = validationResult(req);
+    try {
+        const { id } = req.params;
+        const userData = req.body;
+        
+        // 1. Cria uma cópia dos dados recebidos para evitar modificar o objeto original
+        const updateFields = { ...userData };
 
-            if (!errors.isEmpty()) {
-                return res.status(400).json({
-                    message: "Erro de validação",
-                    errors: errors.array().reduce((acc, err) => {
-                        acc[err.param] = err.msg;
-                        return acc;
-                    }, {})
-                });
+        // 2. Se uma nova senha foi enviada, faz o hash dela
+        if (userData.password && userData.password.length >= 6) {
+            updateFields.password = await bcrypt.hash(userData.password, 12);
+        } else {
+            // Remove os campos de senha se não forem válidos para não salvar "undefined"
+            delete updateFields.password;
+            delete updateFields.confirmPassword;
+        }
+
+        // 3. Converte a string de data de nascimento para o formato Date do MongoDB
+        // O frontend envia a data no formato ISO (ex: "2025-08-09T15:00:00.000Z")
+        if (userData.dataNascimento) {
+            const dateObj = new Date(userData.dataNascimento);
+            // Verifica se a data é válida antes de atribuir
+            if (!isNaN(dateObj.getTime())) {
+                updateFields.dataNascimento = dateObj;
+            } else {
+                // Se a data for inválida, remove do objeto para não dar erro
+                delete updateFields.dataNascimento; 
             }
+        }
 
-            const existingUser = await User.findById(id);
-            if (!existingUser) {
-                return res.status(404).json({
-                    message: "Usuário não encontrado.",
-                    error: "NOT_FOUND"
-                });
+        // 4. (NOVO) Converte a string da data do procedimento para o formato Date
+        if (userData.dataProcedimento) {
+            const dateObj = new Date(userData.dataProcedimento);
+            if (!isNaN(dateObj.getTime())) {
+                updateFields.dataProcedimento = dateObj;
+            } else {
+                delete updateFields.dataProcedimento;
             }
+        }
 
-            // Cria um objeto de atualização com apenas os campos que foram enviados
-            const updateFields = {};
-            for (const key in userData) {
-                // Exclui campos que não devem ser atualizados diretamente
-                if (key !== 'password' && key !== 'confirmPassword' && key !== '_id' && key !== '__v') {
-                    updateFields[key] = userData[key];
-                }
+        // 5. Executa a atualização no banco de dados
+        // O operador `$set` garante que apenas os campos enviados em `updateFields` sejam atualizados
+        const updatedUser = await User.findByIdAndUpdate(
+            id,
+            { $set: updateFields },
+            {
+                new: true,          // Retorna o documento já atualizado
+                runValidators: true,  // Garante que as validações do Schema sejam aplicadas
+                lean: true            // Retorna um objeto JavaScript simples
             }
+        ).select('-password'); // Garante que a senha não seja retornada na resposta
 
-            // Se houver um arquivo na requisição, adiciona o nome ao updateFields
-            if (req.file) {
-                updateFields.image = req.file.filename;
-            }
-
-            // Se a senha for fornecida, faz o hash antes de salvar
-            if (userData.password) {
-                updateFields.password = await bcrypt.hash(userData.password, 12);
-            }
-
-            // Tratamento dos campos de data para o formato ISO
-            if (userData.dataNascimento) {
-                const [day, month, year] = userData.dataNascimento.split('/');
-                const dateObj = new Date(`${year}-${month}-${day}T12:00:00Z`);
-                if (!isNaN(dateObj.getTime())) {
-                    updateFields.dataNascimento = dateObj.toISOString();
-                } else {
-                    return res.status(400).json({
-                        message: "Erro na data de nascimento. Formato inválido.",
-                        error: "INVALID_DATE_FORMAT"
-                    });
-                }
-            }
-
-            const updatedUser = await User.findByIdAndUpdate(
-                id,
-                { $set: updateFields },
-                {
-                    new: true, // Retorna o documento atualizado
-                    lean: true, // Retorna um objeto JavaScript puro
-                    runValidators: true // Garante que as validações do Mongoose sejam executadas
-                }
-            ).select('-password');
-
-            res.json({
-                message: "Usuário atualizado com sucesso!",
-                user: updatedUser
-            });
-        } catch (error) {
-            console.error("Erro ao atualizar usuário:", error);
-            if (error.name === 'ValidationError') {
-                const mongooseErrors = formatMongooseErrors(error);
-                return res.status(400).json({
-                    message: "Erro de validação",
-                    errors: mongooseErrors || error.message
-                });
-            }
-            res.status(500).json({
-                message: "Erro interno no servidor",
-                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        // Verifica se o usuário foi encontrado e atualizado
+        if (!updatedUser) {
+            return res.status(404).json({
+                message: "Usuário não encontrado.",
+                error: "NOT_FOUND"
             });
         }
+
+        // 6. Envia a resposta de sucesso com o usuário atualizado
+        res.status(200).json({
+            message: "Usuário atualizado com sucesso!",
+            user: updatedUser
+        });
+
+    } catch (error) {
+        // Tratamento de erros
+        console.error("Erro ao atualizar usuário:", error);
+        
+        if (error.name === 'ValidationError') {
+            const mongooseErrors = formatMongooseErrors(error); // Supondo que você tenha essa função
+            return res.status(400).json({
+                message: "Erro de validação",
+                errors: mongooseErrors || error.message
+            });
+        }
+
+        res.status(500).json({
+            message: "Erro interno no servidor",
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
+}
 
     static async deleteUser(req, res) {
         try {

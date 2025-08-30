@@ -13,7 +13,7 @@ const ProcedimentoSchema = new mongoose.Schema({
   valor: { type: Number, min: 0, required: false }, // Alterado para false
   dataProcedimento: { type: Date, required: false },
   dataNovoProcedimento: { type: Date, required: false },// Alterado para false se desejar
-  arquivo: { type: String, required: false }
+  arquivos: { type: [String], required: false }
 }, { timestamps: true });
 
 // Schema principal do usuário

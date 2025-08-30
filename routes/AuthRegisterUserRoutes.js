@@ -13,19 +13,22 @@ router.get("/users", verifyToken, AuthRegisterUserController.getAllUsers);
 router.put("/users/:id", verifyToken, AuthRegisterUserController.updateUser);
 router.delete("/users/:id", verifyToken, AuthRegisterUserController.deleteUser);
 
-// ROTA DE ADICIONAR PROCEDIMENTO COM MIDDLEWARE DE UPLOAD
+// ROTA DE ADICIONAR PROCEDIMENTO COM MULTI-UPLOAD
 router.put(
     '/users/:id/procedimento', 
     verifyToken, 
-    upload.single('arquivo'), // <-- MODIFICADO: Adicionado middleware aqui
+    // --- MUDANÇA AQUI ---
+    // Usamos .array() para múltiplos arquivos, e o nome do campo é 'arquivos'
+    upload.array('arquivos', 10), // Limite de 10 arquivos
     AuthRegisterUserController.addProcedimento
 );
 
-// ROTA DE ATUALIZAR PROCEDIMENTO COM MIDDLEWARE DE UPLOAD
+// ROTA DE ATUALIZAR PROCEDIMENTO COM MULTI-UPLOAD
 router.put(
     '/users/:id/procedimento/:procedimentoId', 
     verifyToken, 
-    upload.single('arquivo'), // <-- MODIFICADO: Adicionado middleware aqui
+    // --- MUDANÇA AQUI ---
+    upload.array('arquivos', 10),
     AuthRegisterUserController.updateProcedimento
 );
 

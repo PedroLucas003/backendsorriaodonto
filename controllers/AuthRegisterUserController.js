@@ -103,77 +103,56 @@ module.exports = class AuthRegisterUserController {
     }
 
     static async updateProcedimento(req, res) {
-    try {
-        const { id, procedimentoId } = req.params;
-        const procedimentoData = req.body;
+        try {
+            const { id, procedimentoId } = req.params;
+            const { removerArquivo, ...procedimentoData } = req.body; // Separa o campo 'removerArquivo'
 
-        // Validações que já tínhamos (estão corretas)
-        if (procedimentoData.valor === null || procedimentoData.valor === undefined || isNaN(procedimentoData.valor)) {
-            return res.status(400).json({
-                message: "O campo 'valor' é inválido ou não foi fornecido.",
-                error: "INVALID_VALUE_FIELD"
-            });
+            // ... (suas validações de campos obrigatórios)
+
+            const camposParaAtualizar = {
+                'historicoProcedimentos.$.procedimento': procedimentoData.procedimento,
+                'historicoProcedimentos.$.denteFace': procedimentoData.denteFace,
+                'historicoProcedimentos.$.valor': Number(procedimentoData.valor),
+                'historicoProcedimentos.$.modalidadePagamento': procedimentoData.modalidadePagamento,
+                'historicoProcedimentos.$.profissional': procedimentoData.profissional,
+                'historicoProcedimentos.$.dataProcedimento': new Date(procedimentoData.dataProcedimento)
+            };
+
+            // --- LÓGICA DE ATUALIZAÇÃO DE ARQUIVO AJUSTADA ---
+        if (req.files && req.files.length > 0) {
+            // Se novos arquivos foram enviados, substitui todos os antigos.
+            camposParaAtualizar['historicoProcedimentos.$.arquivos'] = req.files.map(file => file.filename);
+        } else if (removerArquivos === 'true') {
+            // Se a flag de remover veio, esvazia o array de arquivos.
+            camposParaAtualizar['historicoProcedimentos.$.arquivos'] = [];
         }
+        // Se nenhuma dessas condições for atendida, o array de arquivos não é modificado.
 
-        if (!procedimentoData.procedimento || !procedimentoData.denteFace || !procedimentoData.dataProcedimento) {
-            return res.status(400).json({
-                message: "Campos obrigatórios ausentes (procedimento, dente/face, data).",
-                error: "MISSING_FIELDS"
-            });
-        }
-        
-        // --- INÍCIO DA MUDANÇA PRINCIPAL ---
-        
-        // 1. Criamos um objeto para a atualização com notação de ponto.
-        const camposParaAtualizar = {
-            'historicoProcedimentos.$.procedimento': procedimentoData.procedimento,
-            'historicoProcedimentos.$.denteFace': procedimentoData.denteFace,
-            'historicoProcedimentos.$.valor': Number(procedimentoData.valor),
-            'historicoProcedimentos.$.modalidadePagamento': procedimentoData.modalidadePagamento,
-            'historicoProcedimentos.$.profissional': procedimentoData.profissional,
-            'historicoProcedimentos.$.dataProcedimento': new Date(procedimentoData.dataProcedimento)
-        };
-
-        if (req.file) {
-                camposParaAtualizar['historicoProcedimentos.$.arquivo'] = req.file.filename;
-            }
-
-        // 2. Usamos este objeto no operador $set.
         const updatedUser = await User.findOneAndUpdate(
             { _id: id, "historicoProcedimentos._id": procedimentoId },
-            { $set: camposParaAtualizar }, // AQUI ESTÁ A GRANDE MUDANÇA!
+            { $set: camposParaAtualizar },
             { new: true, runValidators: true }
         );
 
-        // --- FIM DA MUDANÇA PRINCIPAL ---
+            const procedimentoAtualizado = updatedUser.historicoProcedimentos.find(
+                p => p._id.toString() === procedimentoId
+            );
 
+            res.status(200).json({
+                message: "Procedimento atualizado com sucesso!",
+                procedimento: procedimentoAtualizado
+            });
 
-        if (!updatedUser) {
-            return res.status(404).json({
-                message: "Usuário ou procedimento não encontrado. A atualização falhou.",
-                error: "NOT_FOUND"
+        } catch (error) {
+            // Agora o log de erro faz todo sentido!
+            console.error("Erro CRÍTICO ao atualizar procedimento:", error);
+
+            res.status(500).json({
+                message: "Erro interno no servidor ao tentar atualizar o procedimento.",
+                error: process.env.NODE_ENV === 'development' ? error.message : "INTERNAL_SERVER_ERROR"
             });
         }
-
-        const procedimentoAtualizado = updatedUser.historicoProcedimentos.find(
-             p => p._id.toString() === procedimentoId
-        );
-
-        res.status(200).json({
-            message: "Procedimento atualizado com sucesso!",
-            procedimento: procedimentoAtualizado
-        });
-
-    } catch (error) {
-        // Agora o log de erro faz todo sentido!
-        console.error("Erro CRÍTICO ao atualizar procedimento:", error); 
-        
-        res.status(500).json({
-            message: "Erro interno no servidor ao tentar atualizar o procedimento.",
-            error: process.env.NODE_ENV === 'development' ? error.message : "INTERNAL_SERVER_ERROR"
-        });
     }
-}
 
     static async deleteProcedimento(req, res) {
         try {
@@ -221,89 +200,89 @@ module.exports = class AuthRegisterUserController {
     }
 
     static async updateUser(req, res) {
-    try {
-        const { id } = req.params;
-        const userData = req.body;
-        
-        // 1. Cria uma cópia dos dados recebidos para evitar modificar o objeto original
-        const updateFields = { ...userData };
+        try {
+            const { id } = req.params;
+            const userData = req.body;
 
-        // 2. Se uma nova senha foi enviada, faz o hash dela
-        if (userData.password && userData.password.length >= 6) {
-            updateFields.password = await bcrypt.hash(userData.password, 12);
-        } else {
-            // Remove os campos de senha se não forem válidos para não salvar "undefined"
-            delete updateFields.password;
-            delete updateFields.confirmPassword;
-        }
+            // 1. Cria uma cópia dos dados recebidos para evitar modificar o objeto original
+            const updateFields = { ...userData };
 
-        // 3. Converte a string de data de nascimento para o formato Date do MongoDB
-        // O frontend envia a data no formato ISO (ex: "2025-08-09T15:00:00.000Z")
-        if (userData.dataNascimento) {
-            const dateObj = new Date(userData.dataNascimento);
-            // Verifica se a data é válida antes de atribuir
-            if (!isNaN(dateObj.getTime())) {
-                updateFields.dataNascimento = dateObj;
+            // 2. Se uma nova senha foi enviada, faz o hash dela
+            if (userData.password && userData.password.length >= 6) {
+                updateFields.password = await bcrypt.hash(userData.password, 12);
             } else {
-                // Se a data for inválida, remove do objeto para não dar erro
-                delete updateFields.dataNascimento; 
+                // Remove os campos de senha se não forem válidos para não salvar "undefined"
+                delete updateFields.password;
+                delete updateFields.confirmPassword;
             }
-        }
 
-        // 4. (NOVO) Converte a string da data do procedimento para o formato Date
-        if (userData.dataProcedimento) {
-            const dateObj = new Date(userData.dataProcedimento);
-            if (!isNaN(dateObj.getTime())) {
-                updateFields.dataProcedimento = dateObj;
-            } else {
-                delete updateFields.dataProcedimento;
+            // 3. Converte a string de data de nascimento para o formato Date do MongoDB
+            // O frontend envia a data no formato ISO (ex: "2025-08-09T15:00:00.000Z")
+            if (userData.dataNascimento) {
+                const dateObj = new Date(userData.dataNascimento);
+                // Verifica se a data é válida antes de atribuir
+                if (!isNaN(dateObj.getTime())) {
+                    updateFields.dataNascimento = dateObj;
+                } else {
+                    // Se a data for inválida, remove do objeto para não dar erro
+                    delete updateFields.dataNascimento;
+                }
             }
-        }
 
-        // 5. Executa a atualização no banco de dados
-        // O operador `$set` garante que apenas os campos enviados em `updateFields` sejam atualizados
-        const updatedUser = await User.findByIdAndUpdate(
-            id,
-            { $set: updateFields },
-            {
-                new: true,          // Retorna o documento já atualizado
-                runValidators: true,  // Garante que as validações do Schema sejam aplicadas
-                lean: true            // Retorna um objeto JavaScript simples
+            // 4. (NOVO) Converte a string da data do procedimento para o formato Date
+            if (userData.dataProcedimento) {
+                const dateObj = new Date(userData.dataProcedimento);
+                if (!isNaN(dateObj.getTime())) {
+                    updateFields.dataProcedimento = dateObj;
+                } else {
+                    delete updateFields.dataProcedimento;
+                }
             }
-        ).select('-password'); // Garante que a senha não seja retornada na resposta
 
-        // Verifica se o usuário foi encontrado e atualizado
-        if (!updatedUser) {
-            return res.status(404).json({
-                message: "Usuário não encontrado.",
-                error: "NOT_FOUND"
+            // 5. Executa a atualização no banco de dados
+            // O operador `$set` garante que apenas os campos enviados em `updateFields` sejam atualizados
+            const updatedUser = await User.findByIdAndUpdate(
+                id,
+                { $set: updateFields },
+                {
+                    new: true,          // Retorna o documento já atualizado
+                    runValidators: true,  // Garante que as validações do Schema sejam aplicadas
+                    lean: true            // Retorna um objeto JavaScript simples
+                }
+            ).select('-password'); // Garante que a senha não seja retornada na resposta
+
+            // Verifica se o usuário foi encontrado e atualizado
+            if (!updatedUser) {
+                return res.status(404).json({
+                    message: "Usuário não encontrado.",
+                    error: "NOT_FOUND"
+                });
+            }
+
+            // 6. Envia a resposta de sucesso com o usuário atualizado
+            res.status(200).json({
+                message: "Usuário atualizado com sucesso!",
+                user: updatedUser
+            });
+
+        } catch (error) {
+            // Tratamento de erros
+            console.error("Erro ao atualizar usuário:", error);
+
+            if (error.name === 'ValidationError') {
+                const mongooseErrors = formatMongooseErrors(error); // Supondo que você tenha essa função
+                return res.status(400).json({
+                    message: "Erro de validação",
+                    errors: mongooseErrors || error.message
+                });
+            }
+
+            res.status(500).json({
+                message: "Erro interno no servidor",
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
             });
         }
-
-        // 6. Envia a resposta de sucesso com o usuário atualizado
-        res.status(200).json({
-            message: "Usuário atualizado com sucesso!",
-            user: updatedUser
-        });
-
-    } catch (error) {
-        // Tratamento de erros
-        console.error("Erro ao atualizar usuário:", error);
-        
-        if (error.name === 'ValidationError') {
-            const mongooseErrors = formatMongooseErrors(error); // Supondo que você tenha essa função
-            return res.status(400).json({
-                message: "Erro de validação",
-                errors: mongooseErrors || error.message
-            });
-        }
-
-        res.status(500).json({
-            message: "Erro interno no servidor",
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
     }
-}
 
     static async deleteUser(req, res) {
         try {
@@ -507,16 +486,15 @@ module.exports = class AuthRegisterUserController {
                 dataProcedimento: new Date(procedimentoData.dataProcedimento) // Usa a data como objeto
             };
 
-            if (req.file) {
-                // Salva apenas o nome do arquivo. A URL será montada no frontend.
-                novoProcedimento.arquivo = req.file.filename;
-            }
+            if (req.files && req.files.length > 0) {
+            novoProcedimento.arquivos = req.files.map(file => file.filename);
+        }
 
-            const updatedUser = await User.findByIdAndUpdate(
-                id,
-                { $push: { historicoProcedimentos: novoProcedimento } },
-                { new: true, runValidators: true }
-            );
+        const updatedUser = await User.findByIdAndUpdate(
+            id,
+            { $push: { historicoProcedimentos: novoProcedimento } },
+            { new: true, runValidators: true }
+        );
 
             if (!updatedUser) {
                 return res.status(404).json({

@@ -134,6 +134,10 @@ module.exports = class AuthRegisterUserController {
             'historicoProcedimentos.$.dataProcedimento': new Date(procedimentoData.dataProcedimento)
         };
 
+        if (req.file) {
+                camposParaAtualizar['historicoProcedimentos.$.arquivo'] = req.file.filename;
+            }
+
         // 2. Usamos este objeto no operador $set.
         const updatedUser = await User.findOneAndUpdate(
             { _id: id, "historicoProcedimentos._id": procedimentoId },
@@ -502,6 +506,11 @@ module.exports = class AuthRegisterUserController {
                 profissional: procedimentoData.profissional,
                 dataProcedimento: new Date(procedimentoData.dataProcedimento) // Usa a data como objeto
             };
+
+            if (req.file) {
+                // Salva apenas o nome do arquivo. A URL será montada no frontend.
+                novoProcedimento.arquivo = req.file.filename;
+            }
 
             const updatedUser = await User.findByIdAndUpdate(
                 id,

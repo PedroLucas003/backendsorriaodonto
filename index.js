@@ -3,13 +3,24 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
-const morgan = require("morgan"); // Novo pacote para logs (instale com npm install morgan)
+const morgan = require("morgan");
+const path = require('path');
+const fs = require('fs'); 
 
 console.log('=== Iniciando Servidor ===');
 
 // Configurações iniciais
 const app = express();
 const PORT = process.env.PORT || 4000;
+
+// =============================================
+//          CRIAÇÃO DA PASTA DE UPLOADS
+// =============================================
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+    console.log('✅ Pasta "uploads" criada com sucesso.');
+}
 
 // =============================================
 //               MIDDLEWARES
@@ -73,6 +84,16 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+
+// =============================================
+//      ROTA ESTÁTICA PARA SERVIR ARQUIVOS
+// =============================================
+// Adicione esta linha DEPOIS dos middlewares de segurança, mas ANTES das rotas da API.
+// Isso torna a pasta 'uploads' publicamente acessível.
+app.use('/uploads', express.static(uploadsDir));
+console.log(`📂 Servindo arquivos estáticos de: ${uploadsDir}`);
+
+
 // =============================================
 //               BANCO DE DADOS
 // =============================================
@@ -90,6 +111,9 @@ app.use((req, res, next) => {
   console.log(`📦 ${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
   next();
 });
+
+const AuthRegisterUserRoutes = require("./routes/AuthRegisterUserRoutes");
+app.use('/api', AuthRegisterUserRoutes);
 
 // =============================================
 //             ROTA DE STATUS

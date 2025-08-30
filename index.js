@@ -14,7 +14,7 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // =============================================
-//          CRIAÇÃO DA PASTA DE UPLOADS
+//         CRIAÇÃO DA PASTA DE UPLOADS
 // =============================================
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
@@ -23,7 +23,7 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // =============================================
-//               MIDDLEWARES
+//                 MIDDLEWARES
 // =============================================
 
 // Segurança
@@ -31,7 +31,7 @@ app.use(helmet());
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-// Logs de requisições (apenas em desenvolvimento)
+// Logs de requisições
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
   console.log('🔍 Modo desenvolvimento: logs detalhados ativados');
@@ -48,19 +48,12 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    
-    const originIsAllowed = allowedOrigins.some(allowedOrigin => 
-      origin === allowedOrigin || 
-      origin.includes(allowedOrigin.replace(/https?:\/\//, ''))
-    );
-
-    if (originIsAllowed) {
-      return callback(null, true);
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️ CORS bloqueado para origem: ${origin}`);
+      callback(new Error('Não permitido por CORS'));
     }
-    
-    console.warn(`⚠️ CORS bloqueado para origem: ${origin}`);
-    callback(new Error('Não permitido por CORS'));
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -88,35 +81,31 @@ app.use(limiter);
 // =============================================
 //      ROTA ESTÁTICA PARA SERVIR ARQUIVOS
 // =============================================
-// Adicione esta linha DEPOIS dos middlewares de segurança, mas ANTES das rotas da API.
-// Isso torna a pasta 'uploads' publicamente acessível.
 app.use('/uploads', express.static(uploadsDir));
 console.log(`📂 Servindo arquivos estáticos de: ${uploadsDir}`);
 
 
 // =============================================
-//               BANCO DE DADOS
+//                 BANCO DE DADOS
 // =============================================
 require("./database/connection");
 console.log('✅ Conexão com o banco de dados estabelecida');
 
 // =============================================
-//                  ROTAS
+//                     ROTAS
 // =============================================
 const AuthRegisterUserRoutes = require("./routes/AuthRegisterUserRoutes");
 app.use('/api', AuthRegisterUserRoutes);
 
-// Log de rotas acessadas
+// Log de rotas acessadas (OPCIONAL, PODE SER REMOVIDO SE QUISER)
 app.use((req, res, next) => {
+  // Este log só vai rodar para rotas que não foram capturadas acima, como a rota de status
   console.log(`📦 ${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
   next();
 });
 
-const AuthRegisterUserRoutes = require("./routes/AuthRegisterUserRoutes");
-app.use('/api', AuthRegisterUserRoutes);
-
 // =============================================
-//             ROTA DE STATUS
+//                 ROTA DE STATUS
 // =============================================
 app.get('/', (req, res) => {
   res.status(200).json({
@@ -134,14 +123,14 @@ app.get('/', (req, res) => {
 });
 
 // =============================================
-//            TRATAMENTO DE ERROS
+//               TRATAMENTO DE ERROS
 // =============================================
 
 // Rota não encontrada
-app.use((req, res) => {
+app.use((req, res, next) => {
   res.status(404).json({ 
     success: false,
-    message: "Endpoint não encontrado",
+    message: `Endpoint não encontrado: ${req.method} ${req.originalUrl}`,
     code: "NOT_FOUND"
   });
 });
@@ -150,16 +139,14 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error('💥 ERRO:', err.stack);
   
-  // Tratamento específico para erros CORS
   if (err.message === 'Não permitido por CORS') {
     return res.status(403).json({
       success: false,
-      message: "Acesso não autorizado",
+      message: "Acesso não autorizado (CORS)",
       code: "CORS_BLOCKED"
     });
   }
 
-  // Erro genérico
   res.status(500).json({ 
     success: false,
     message: "Erro interno do servidor",
@@ -169,7 +156,7 @@ app.use((err, req, res, next) => {
 });
 
 // =============================================
-//               INICIALIZAÇÃO
+//                  INICIALIZAÇÃO
 // =============================================
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);

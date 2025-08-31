@@ -42,6 +42,7 @@ const allowedOrigins = [
   'https://frontvercel.vercel.app',
   'https://frontendsorriaodonto.vercel.app',
   'https://sorriaodontofn.com',
+  'https://www.sorriaodontofn.com', // <-- ADICIONE ESTA LINHA
   'http://localhost:3000',
   'http://localhost:4000'
 ];

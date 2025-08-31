@@ -103,56 +103,60 @@ module.exports = class AuthRegisterUserController {
     }
 
     static async updateProcedimento(req, res) {
-        try {
-            const { id, procedimentoId } = req.params;
-            const { removerArquivo, ...procedimentoData } = req.body; // Separa o campo 'removerArquivo'
+    try {
+        const { id, procedimentoId } = req.params;
+        // Corrigido para 'removerArquivos' (plural) para bater com o frontend
+        const { removerArquivos, ...procedimentoData } = req.body;
 
-            // ... (suas validações de campos obrigatórios)
+        // 1. BUSCAR o usuário principal
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({ message: "Usuário não encontrado." });
+        }
 
-            const camposParaAtualizar = {
-                'historicoProcedimentos.$.procedimento': procedimentoData.procedimento,
-                'historicoProcedimentos.$.denteFace': procedimentoData.denteFace,
-                'historicoProcedimentos.$.valor': Number(procedimentoData.valor),
-                'historicoProcedimentos.$.modalidadePagamento': procedimentoData.modalidadePagamento,
-                'historicoProcedimentos.$.profissional': procedimentoData.profissional,
-                'historicoProcedimentos.$.dataProcedimento': new Date(procedimentoData.dataProcedimento)
-            };
+        // 2. ENCONTRAR o procedimento específico dentro do histórico
+        const procedimento = user.historicoProcedimentos.id(procedimentoId);
+        if (!procedimento) {
+            return res.status(404).json({ message: "Procedimento não encontrado." });
+        }
 
-            // --- LÓGICA DE ATUALIZAÇÃO DE ARQUIVO AJUSTADA ---
+        // 3. MODIFICAR os dados do procedimento em memória
+        procedimento.procedimento = procedimentoData.procedimento;
+        procedimento.denteFace = procedimentoData.denteFace;
+        procedimento.valor = Number(procedimentoData.valor);
+        procedimento.modalidadePagamento = procedimentoData.modalidadePagamento;
+        procedimento.profissional = procedimentoData.profissional;
+        procedimento.dataProcedimento = new Date(procedimentoData.dataProcedimento);
+
+        // --- LÓGICA DE ARQUIVOS CORRIGIDA ---
+        if (removerArquivos === 'true') {
+            // Se o usuário pediu para remover, limpa o array de arquivos.
+            procedimento.arquivos = [];
+        }
+
         if (req.files && req.files.length > 0) {
-            // Se novos arquivos foram enviados, substitui todos os antigos.
-            camposParaAtualizar['historicoProcedimentos.$.arquivos'] = req.files.map(file => file.filename);
-        } else if (removerArquivos === 'true') {
-            // Se a flag de remover veio, esvazia o array de arquivos.
-            camposParaAtualizar['historicoProcedimentos.$.arquivos'] = [];
+            // Se novos arquivos foram enviados, ADICIONA eles ao array existente.
+            const novosArquivos = req.files.map(file => file.filename);
+            procedimento.arquivos.push(...novosArquivos);
         }
-        // Se nenhuma dessas condições for atendida, o array de arquivos não é modificado.
 
-        const updatedUser = await User.findOneAndUpdate(
-            { _id: id, "historicoProcedimentos._id": procedimentoId },
-            { $set: camposParaAtualizar },
-            { new: true, runValidators: true }
-        );
+        // 4. SALVAR o documento do usuário com as alterações
+        await user.save();
 
-            const procedimentoAtualizado = updatedUser.historicoProcedimentos.find(
-                p => p._id.toString() === procedimentoId
-            );
+        // 5. Retornar o procedimento atualizado como resposta
+        res.status(200).json({
+            message: "Procedimento atualizado com sucesso!",
+            procedimento: procedimento
+        });
 
-            res.status(200).json({
-                message: "Procedimento atualizado com sucesso!",
-                procedimento: procedimentoAtualizado
-            });
-
-        } catch (error) {
-            // Agora o log de erro faz todo sentido!
-            console.error("Erro CRÍTICO ao atualizar procedimento:", error);
-
-            res.status(500).json({
-                message: "Erro interno no servidor ao tentar atualizar o procedimento.",
-                error: process.env.NODE_ENV === 'development' ? error.message : "INTERNAL_SERVER_ERROR"
-            });
-        }
+    } catch (error) {
+        console.error("Erro CRÍTICO ao atualizar procedimento:", error);
+        res.status(500).json({
+            message: "Erro interno no servidor ao tentar atualizar o procedimento.",
+            error: process.env.NODE_ENV === 'development' ? error.message : "INTERNAL_SERVER_ERROR"
+        });
     }
+}
 
     static async deleteProcedimento(req, res) {
         try {

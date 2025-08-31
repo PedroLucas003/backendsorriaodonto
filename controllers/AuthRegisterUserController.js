@@ -149,7 +149,7 @@ module.exports = class AuthRegisterUserController {
         res.status(200).json({
             message: "Procedimento atualizado com sucesso!",
             procedimento: procedimento
-        });
+        }); 
 
     } catch (error) {
         console.error("Erro CRÍTICO ao atualizar procedimento:", error);

@@ -105,22 +105,20 @@ module.exports = class AuthRegisterUserController {
     static async updateProcedimento(req, res) {
     try {
         const { id, procedimentoId } = req.params;
-        // Corrigido para 'removerArquivos' (plural) para bater com o frontend
-        const { removerArquivos, ...procedimentoData } = req.body;
+        // Agora pegamos 'arquivosMantidos' do corpo da requisição
+        const { arquivosMantidos, ...procedimentoData } = req.body;
 
-        // 1. BUSCAR o usuário principal
         const user = await User.findById(id);
         if (!user) {
             return res.status(404).json({ message: "Usuário não encontrado." });
         }
 
-        // 2. ENCONTRAR o procedimento específico dentro do histórico
         const procedimento = user.historicoProcedimentos.id(procedimentoId);
         if (!procedimento) {
             return res.status(404).json({ message: "Procedimento não encontrado." });
         }
 
-        // 3. MODIFICAR os dados do procedimento em memória
+        // Atualiza os dados de texto do procedimento
         procedimento.procedimento = procedimentoData.procedimento;
         procedimento.denteFace = procedimentoData.denteFace;
         procedimento.valor = Number(procedimentoData.valor);
@@ -128,22 +126,26 @@ module.exports = class AuthRegisterUserController {
         procedimento.profissional = procedimentoData.profissional;
         procedimento.dataProcedimento = new Date(procedimentoData.dataProcedimento);
 
-        // --- LÓGICA DE ARQUIVOS CORRIGIDA ---
-        if (removerArquivos === 'true') {
-            // Se o usuário pediu para remover, limpa o array de arquivos.
-            procedimento.arquivos = [];
-        }
+        // --- LÓGICA FINAL PARA GERENCIAR ARQUIVOS ---
+        let finalArquivos = [];
 
+        // 1. Adiciona os arquivos que o usuário decidiu manter
+        if (arquivosMantidos) {
+            // Garante que seja sempre um array
+            finalArquivos = Array.isArray(arquivosMantidos) ? arquivosMantidos : [arquivosMantidos];
+        }
+        
+        // 2. Adiciona os novos arquivos que foram enviados
         if (req.files && req.files.length > 0) {
-            // Se novos arquivos foram enviados, ADICIONA eles ao array existente.
             const novosArquivos = req.files.map(file => file.filename);
-            procedimento.arquivos.push(...novosArquivos);
+            finalArquivos.push(...novosArquivos);
         }
 
-        // 4. SALVAR o documento do usuário com as alterações
+        // 3. Define o array final de arquivos no procedimento
+        procedimento.arquivos = finalArquivos;
+
         await user.save();
 
-        // 5. Retornar o procedimento atualizado como resposta
         res.status(200).json({
             message: "Procedimento atualizado com sucesso!",
             procedimento: procedimento
@@ -491,14 +493,14 @@ module.exports = class AuthRegisterUserController {
             };
 
             if (req.files && req.files.length > 0) {
-            novoProcedimento.arquivos = req.files.map(file => file.filename);
-        }
+                novoProcedimento.arquivos = req.files.map(file => file.filename);
+            }
 
-        const updatedUser = await User.findByIdAndUpdate(
-            id,
-            { $push: { historicoProcedimentos: novoProcedimento } },
-            { new: true, runValidators: true }
-        );
+            const updatedUser = await User.findByIdAndUpdate(
+                id,
+                { $push: { historicoProcedimentos: novoProcedimento } },
+                { new: true, runValidators: true }
+            );
 
             if (!updatedUser) {
                 return res.status(404).json({

@@ -206,89 +206,98 @@ module.exports = class AuthRegisterUserController {
     }
 
     static async updateUser(req, res) {
-        try {
-            const { id } = req.params;
-            const userData = req.body;
+    try {
+        const { id } = req.params;
+        const userData = req.body;
 
-            // 1. Cria uma cópia dos dados recebidos para evitar modificar o objeto original
-            const updateFields = { ...userData };
+        // 1. Primeiro, buscamos o usuário completo no banco de dados
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({
+                message: "Usuário não encontrado.",
+                error: "NOT_FOUND"
+            });
+        }
 
-            // 2. Se uma nova senha foi enviada, faz o hash dela
-            if (userData.password && userData.password.length >= 6) {
-                updateFields.password = await bcrypt.hash(userData.password, 12);
-            } else {
-                // Remove os campos de senha se não forem válidos para não salvar "undefined"
-                delete updateFields.password;
-                delete updateFields.confirmPassword;
-            }
-
-            // 3. Converte a string de data de nascimento para o formato Date do MongoDB
-            // O frontend envia a data no formato ISO (ex: "2025-08-09T15:00:00.000Z")
-            if (userData.dataNascimento) {
-                const dateObj = new Date(userData.dataNascimento);
-                // Verifica se a data é válida antes de atribuir
-                if (!isNaN(dateObj.getTime())) {
-                    updateFields.dataNascimento = dateObj;
-                } else {
-                    // Se a data for inválida, remove do objeto para não dar erro
-                    delete updateFields.dataNascimento;
+        // 2. Atualizamos os dados pessoais e de saúde do usuário
+        // (Excluindo os campos de procedimento, que trataremos separadamente)
+        Object.keys(userData).forEach(key => {
+            const isProcedureField = ['procedimento', 'denteFace', 'valor', 'modalidadePagamento', 'profissional', 'dataProcedimento'].includes(key);
+            
+            if (!isProcedureField && userData[key] !== undefined) {
+                // Lógica especial para senha e datas (se houver)
+                if (key === 'password' && userData.password && userData.password.length >= 6) {
+                    user.password = bcrypt.hashSync(userData.password, 12);
+                } else if (key === 'dataNascimento') {
+                    const dateObj = new Date(userData.dataNascimento);
+                    if (!isNaN(dateObj.getTime())) user.dataNascimento = dateObj;
+                } else if (key !== 'password') {
+                    // Atualiza campos simples e objetos aninhados (habitos, exames)
+                    if (typeof userData[key] === 'object' && user[key]) {
+                        user[key] = { ...user[key], ...userData[key] };
+                    } else {
+                        user[key] = userData[key];
+                    }
                 }
             }
+        });
 
-            // 4. (NOVO) Converte a string da data do procedimento para o formato Date
+        // 3. Se foram enviados dados de procedimento e o usuário tem um histórico,
+        //    atualizamos o procedimento mais recente.
+        const temDadosDeProcedimento = userData.procedimento || userData.denteFace || userData.valor;
+
+        if (temDadosDeProcedimento && user.historicoProcedimentos && user.historicoProcedimentos.length > 0) {
+            
+            // Garante que o histórico está ordenado do mais recente para o mais antigo
+            user.historicoProcedimentos.sort((a, b) => new Date(b.dataProcedimento) - new Date(a.dataProcedimento));
+            
+            // Pega a referência do procedimento mais recente
+            const procedimentoParaAtualizar = user.historicoProcedimentos[0];
+
+            // Atualiza os campos do procedimento
+            procedimentoParaAtualizar.procedimento = userData.procedimento;
+            procedimentoParaAtualizar.denteFace = userData.denteFace;
+            procedimentoParaAtualizar.valor = userData.valor;
+            procedimentoParaAtualizar.modalidadePagamento = userData.modalidadePagamento;
+            procedimentoParaAtualizar.profissional = userData.profissional;
+
+            // Atualiza a data do procedimento, convertendo para o formato Date
             if (userData.dataProcedimento) {
                 const dateObj = new Date(userData.dataProcedimento);
                 if (!isNaN(dateObj.getTime())) {
-                    updateFields.dataProcedimento = dateObj;
-                } else {
-                    delete updateFields.dataProcedimento;
+                    procedimentoParaAtualizar.dataProcedimento = dateObj;
                 }
             }
+        }
 
-            // 5. Executa a atualização no banco de dados
-            // O operador `$set` garante que apenas os campos enviados em `updateFields` sejam atualizados
-            const updatedUser = await User.findByIdAndUpdate(
-                id,
-                { $set: updateFields },
-                {
-                    new: true,          // Retorna o documento já atualizado
-                    runValidators: true,  // Garante que as validações do Schema sejam aplicadas
-                    lean: true            // Retorna um objeto JavaScript simples
-                }
-            ).select('-password'); // Garante que a senha não seja retornada na resposta
+        // 4. Salva todas as alterações no banco de dados
+        const updatedUser = await user.save();
 
-            // Verifica se o usuário foi encontrado e atualizado
-            if (!updatedUser) {
-                return res.status(404).json({
-                    message: "Usuário não encontrado.",
-                    error: "NOT_FOUND"
-                });
-            }
+        // 5. Envia a resposta de sucesso com o usuário atualizado (sem a senha)
+        const userResponse = updatedUser.toObject();
+        delete userResponse.password;
 
-            // 6. Envia a resposta de sucesso com o usuário atualizado
-            res.status(200).json({
-                message: "Usuário atualizado com sucesso!",
-                user: updatedUser
-            });
+        res.status(200).json({
+            message: "Usuário atualizado com sucesso!",
+            user: userResponse
+        });
 
-        } catch (error) {
-            // Tratamento de erros
-            console.error("Erro ao atualizar usuário:", error);
-
-            if (error.name === 'ValidationError') {
-                const mongooseErrors = formatMongooseErrors(error); // Supondo que você tenha essa função
-                return res.status(400).json({
-                    message: "Erro de validação",
-                    errors: mongooseErrors || error.message
-                });
-            }
-
-            res.status(500).json({
-                message: "Erro interno no servidor",
-                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    } catch (error) {
+        // ... (seu código de tratamento de erro continua aqui)
+        console.error("Erro ao atualizar usuário:", error);
+        if (error.name === 'ValidationError') {
+            const mongooseErrors = formatMongooseErrors(error);
+            return res.status(400).json({
+                message: "Erro de validação",
+                errors: mongooseErrors || error.message
             });
         }
+        res.status(500).json({
+            message: "Erro interno no servidor",
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
+}
 
     static async deleteUser(req, res) {
         try {

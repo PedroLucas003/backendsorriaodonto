@@ -45,6 +45,7 @@ const allowedOrigins = [
   'https://www.sorriaodontofn.com', // <-- ADICIONE ESTA LINHA
   'http://localhost:3000',
   'http://localhost:4000',
+  'https://newsorriaodontopage.vercel.app',
   'http://localhost:8080'
 ];
 

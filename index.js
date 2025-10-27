@@ -44,7 +44,8 @@ const allowedOrigins = [
   'https://sorriaodontofn.com',
   'https://www.sorriaodontofn.com', // <-- ADICIONE ESTA LINHA
   'http://localhost:3000',
-  'http://localhost:4000'
+  'http://localhost:4000',
+  'http://localhost:8080'
 ];
 
 const corsOptions = {
